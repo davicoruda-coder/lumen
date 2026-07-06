@@ -1,0 +1,26 @@
+FICHA PRÉ-CLONAGEM — sistema-clinica02
+======================================
+
+Comando: npm run clonar-clinica
+
+── 1. Identidade ──
+[1] Nome comercial da clínica
+[2] Nome da assistente virtual (referência)
+[3] Endereço completo
+[4] WhatsApp suporte DavicoSystems (só dígitos)
+
+── 2. Supabase ──
+[5] URL do projeto
+[6] Project ref
+[7] Anon Key
+[8] Service Role Key
+
+── 3. Vercel ──
+[9] Domínio do painel
+
+── 4. Auth ──
+[10] E-mail superadmin
+
+Após gerar: seguir clientes/<slug>/PENDENCIAS.txt
+
+Sem fase n8n neste repositório.

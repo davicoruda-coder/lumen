@@ -1,0 +1,14 @@
+Pacotes de clientes (gerados por npm run clonar-clinica)
+======================================================
+
+Cada pasta clientes/<slug>/ contém:
+- dados-clinica.json
+- .env / vercel-env.txt
+- clinic_config_personalizar.sql
+- promover_superadmin.sql
+- LEIA-ME.txt
+- PENDENCIAS.txt
+
+Pastas com credenciais reais estão no .gitignore.
+
+Repositório: sistema-clinica02 (sem n8n).

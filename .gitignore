@@ -1,0 +1,48 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Environment variables — NEVER commit real credentials
+.env
+.env.*
+!.env.example
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# PowerShell artifact (Windows)
+.FullName
+
+# Scratch scripts
+scratch/
+
+# Pacotes por clínica (credenciais reais — gerados por npm run clonar-clinica)
+clientes/*/
+!clientes/LEIA-ME.txt
+
+# Legado — exportações antigas de teste
+documentacao/export/
+
+.vercel
+
+# Supabase CLI local cache (must never be committed — vincula ao projeto de origem)
+supabase/.temp/
+supabase/.branches/
