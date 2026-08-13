@@ -11,4 +11,4 @@ Cada pasta clientes/<slug>/ contém:
 
 Pastas com credenciais reais estão no .gitignore.
 
-Repositório: sistema-clinica02 (sem n8n).
+Repositório: lumen (sem n8n).

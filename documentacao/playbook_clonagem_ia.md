@@ -1,4 +1,4 @@
-# Playbook de Clonagem com IA — sistema-clinica02
+# Playbook de Clonagem com IA — Lumen
 
 > Guia para assistentes de IA guiarem o deploy de uma nova clínica. **Uma fase só** — sem n8n.
 

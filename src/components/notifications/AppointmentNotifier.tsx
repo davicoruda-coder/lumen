@@ -69,7 +69,7 @@ export function AppointmentNotifier() {
             playNotificationSound();
             new Notification('Bom dia! ☀️', {
               body: `Temos ${count} consultas agendadas para hoje. Vamos com tudo!`,
-              icon: '/icon-192x192.png'
+              icon: '/icon-192.png'
             });
             hasNotifiedDailyRef.current = true;
           }
@@ -109,7 +109,7 @@ export function AppointmentNotifier() {
 
             new Notification(`Próximo Paciente em 15 min ⏰`, {
               body: `A paciente ${agendamento.nome_lead || 'Sem Nome'} tem consulta às ${timeStr} (${agendamento.procedimento_nome || 'Procedimento'}). Ficha aberta para conferência.`,
-              icon: '/icon-192x192.png',
+              icon: '/icon-192.png',
               requireInteraction: true
             });
             

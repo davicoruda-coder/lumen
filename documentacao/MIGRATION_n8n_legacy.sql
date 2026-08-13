@@ -1,7 +1,7 @@
 -- =========================================================================
 -- MIGRATION: Remover artefatos do ecossistema n8n (sistema-clinica01 → 02)
 -- Use SOMENTE se o banco foi criado com o schema antigo (com n8n/Chatwoot).
--- Instalações novas com MASTER_SCHEMA.sql do sistema-clinica02 NÃO precisam.
+-- Instalações novas com MASTER_SCHEMA.sql do Lumen NÃO precisam.
 -- =========================================================================
 
 DROP VIEW IF EXISTS public.vw_leads_com_tempo;

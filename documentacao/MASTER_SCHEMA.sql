@@ -52,11 +52,16 @@
 --   - Seed inicial (seção 8.1) usa 'GESTAO' — personalização por cliente via
 --     clientes/<slug>/clinic_config_personalizar.sql (gerado por npm run clonar-clinica).
 --
--- CHANGELOG v4.0 (Jun/2026) — sistema-clinica02:
+-- CHANGELOG v4.0 (Jun/2026) — Lumen (ex-sistema-clinica02):
 --   - Removidas tabelas/views legadas de automação externa (histórico IA,
 --     transbordos, tokens API, view de follow-up) e colunas Chatwoot em leads_estetica.
 --   - Clonagem em fase única: npm run clonar-clinica -- <slug>
 --   - Migração opcional de bancos antigos: MIGRATION_n8n_legacy.sql
+--
+-- CHANGELOG v4.1 (Ago/2026):
+--   - RLS "Admins can update user roles": WITH CHECK passa a incluir 'gestor'
+--     (antes owner/superadmin não conseguiam atribuir o papel gestor).
+--   - Clínicas já implantadas: rodar PATCH_rls_gestor_v41.sql.
 -- =========================================================================
 
 -- 0. EXTENSÕES DO POSTGRES
@@ -770,7 +775,7 @@ USING (
   (SELECT role FROM public.users WHERE id = auth.uid()) IN ('superadmin', 'owner')
 )
 WITH CHECK (
-  role IN ('especialista', 'owner', 'admin', 'superadmin')
+  role IN ('especialista', 'owner', 'admin', 'superadmin', 'gestor')
 );
 
 -- (Políticas de profiles removidas — tabela legada deletada)

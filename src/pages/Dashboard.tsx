@@ -12,7 +12,7 @@ import { Input } from '../components/ui/Input';
 import { Avatar } from '../components/ui/Avatar';
 import { cn } from '../lib/utils';
 import { 
-  Calendar, Users, Target, UserCheck, Bot, Loader2,
+  Calendar, Users, Target, UserCheck, Loader2,
   Smile, Meh, Frown, MessageSquare, Award, ChevronRight, Play, ExternalLink,
   Check, X, Clock, AlertCircle
 } from 'lucide-react';
@@ -59,8 +59,16 @@ export function Dashboard() {
   const [barChartWeekData, setBarChartWeekData] = useState<any[]>([]);
   const [pieChartData, setPieChartData] = useState<any[]>([]);
   
-  // AI Warning
   const [leadsForaHorario, setLeadsForaHorario] = useState(0);
+  const [npsForm, setNpsForm] = useState({
+    cliente_nome: '',
+    nota: 10,
+    procedimento: '',
+    comentario: '',
+    whatsapp_lead: '',
+  });
+  const [savingNps, setSavingNps] = useState(false);
+  const [npsFormMsg, setNpsFormMsg] = useState<string | null>(null);
 
   // Clinic Hours context (for calculation)
   const [horarios, setHorarios] = useState<any[]>([]);
@@ -258,6 +266,41 @@ export function Dashboard() {
     }
   };
 
+  const handleSaveNps = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const nome = npsForm.cliente_nome.trim();
+    if (!nome) {
+      setNpsFormMsg('Informe o nome do paciente.');
+      return;
+    }
+    const nota = Number(npsForm.nota);
+    if (!Number.isFinite(nota) || nota < 0 || nota > 10) {
+      setNpsFormMsg('A nota deve ser um número de 0 a 10.');
+      return;
+    }
+
+    setSavingNps(true);
+    setNpsFormMsg(null);
+    try {
+      const whatsapp = npsForm.whatsapp_lead.replace(/\D/g, '') || null;
+      const { error } = await supabase.from('nps_feedbacks').insert({
+        cliente_nome: nome,
+        nota,
+        procedimento: npsForm.procedimento.trim() || null,
+        comentario: npsForm.comentario.trim() || null,
+        whatsapp_lead: whatsapp,
+      });
+      if (error) throw error;
+      setNpsForm({ cliente_nome: '', nota: 10, procedimento: '', comentario: '', whatsapp_lead: '' });
+      setNpsFormMsg('Avaliação registrada.');
+      await fetchNpsData();
+    } catch {
+      setNpsFormMsg('Não foi possível salvar. Tente novamente.');
+    } finally {
+      setSavingNps(false);
+    }
+  };
+
   const handleConfirmStatus = async (appointmentId: string, leadId: string | null, novoStatus: 'compareceu' | 'faltou') => {
     try {
       const { error } = await supabase
@@ -443,7 +486,7 @@ export function Dashboard() {
                     📢 Confirmações Pendentes de Atendimento
                   </CardTitle>
                   <p className="text-xs text-text-muted mt-0.5">
-                    Estes agendamentos já passaram do horário. Confirme quem compareceu para disparar os fluxos automáticos de pós-consulta, NPS e reativação.
+                    Estes agendamentos já passaram do horário. Confirme quem compareceu para atualizar o CRM e os relatórios.
                   </p>
                 </div>
               </CardHeader>
@@ -535,11 +578,11 @@ export function Dashboard() {
             </Card>
           </div>
 
-          {/* Gráfico 1 - Atendimentos no WhatsApp */}
+          {/* Gráfico 1 - Novos leads */}
           <Card className="rounded-[14px] shadow-sm">
             <CardHeader className="pb-6">
-              <CardTitle className="text-base font-semibold">Atendimentos no WhatsApp</CardTitle>
-              <p className="text-xs text-text-muted">Total de leads atendidos pelo agente de IA por dia no período</p>
+              <CardTitle className="text-base font-semibold">Novos leads</CardTitle>
+              <p className="text-xs text-text-muted">Leads cadastrados por dia no período</p>
             </CardHeader>
             <CardContent className="h-72">
               <ResponsiveContainer width="100%" height="100%">
@@ -610,15 +653,14 @@ export function Dashboard() {
             </Card>
           </div>
 
-          {/* Aviso IA Fora do Horário */}
           {leadsForaHorario > 0 && (
             <div className="bg-primary-light border-l-4 border-primary p-4 rounded-r-[14px] shadow-sm flex items-start gap-4">
-              <Bot className="w-8 h-8 text-primary flex-shrink-0 mt-1" />
+              <Clock className="w-8 h-8 text-primary flex-shrink-0 mt-1" />
               <div>
                 <h4 className="font-heading font-semibold text-lg text-text-main mb-1">Oportunidades fora do horário</h4>
                 <p className="text-text-main text-sm">
-                  <strong>{leadsForaHorario} pessoas</strong> tentaram falar com sua clínica fora do horário de atendimento. 
-                  Sem o agente de IA no WhatsApp, esses contatos teriam ido embora sem resposta — e provavelmente procurado a concorrência.
+                  <strong>{leadsForaHorario} leads</strong> chegaram fora do horário de atendimento.
+                  Vale retornar esses contatos no CRM ou revisar os horários da clínica.
                 </p>
               </div>
             </div>
@@ -668,6 +710,69 @@ export function Dashboard() {
       ) : (
         // ABA NPS - SATISFAÇÃO & NPS DO CLIENTE
         <div className="space-y-6">
+
+          <Card className="rounded-[14px] shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold">Registrar avaliação</CardTitle>
+              <p className="text-xs text-text-muted">Lance o NPS após o atendimento. Não há envio automático.</p>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSaveNps} className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                <div className="md:col-span-4">
+                  <label className="block text-xs font-medium text-text-muted mb-1">Paciente *</label>
+                  <Input
+                    value={npsForm.cliente_nome}
+                    onChange={e => setNpsForm(f => ({ ...f, cliente_nome: e.target.value }))}
+                    placeholder="Nome completo"
+                    required
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-medium text-text-muted mb-1">Nota (0–10) *</label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={10}
+                    value={npsForm.nota}
+                    onChange={e => setNpsForm(f => ({ ...f, nota: Number(e.target.value) }))}
+                    required
+                  />
+                </div>
+                <div className="md:col-span-3">
+                  <label className="block text-xs font-medium text-text-muted mb-1">WhatsApp</label>
+                  <Input
+                    value={npsForm.whatsapp_lead}
+                    onChange={e => setNpsForm(f => ({ ...f, whatsapp_lead: e.target.value }))}
+                    placeholder="11987654321"
+                  />
+                </div>
+                <div className="md:col-span-3">
+                  <label className="block text-xs font-medium text-text-muted mb-1">Procedimento</label>
+                  <Input
+                    value={npsForm.procedimento}
+                    onChange={e => setNpsForm(f => ({ ...f, procedimento: e.target.value }))}
+                    placeholder="Opcional"
+                  />
+                </div>
+                <div className="md:col-span-10">
+                  <label className="block text-xs font-medium text-text-muted mb-1">Comentário</label>
+                  <Input
+                    value={npsForm.comentario}
+                    onChange={e => setNpsForm(f => ({ ...f, comentario: e.target.value }))}
+                    placeholder="Como foi a experiência?"
+                  />
+                </div>
+                <div className="md:col-span-2 flex items-end">
+                  <Button type="submit" disabled={savingNps} className="w-full">
+                    {savingNps ? 'Salvando…' : 'Salvar'}
+                  </Button>
+                </div>
+              </form>
+              {npsFormMsg && (
+                <p className="text-xs text-text-muted mt-3">{npsFormMsg}</p>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Cards de Métricas de NPS */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -776,7 +881,7 @@ export function Dashboard() {
                   </>
                 ) : (
                   <div className="h-44 flex items-center justify-center text-text-muted text-sm italic">
-                    As avaliações vão aparecer aqui conforme seus pacientes responderem
+                    As avaliações lançadas nesta aba aparecem aqui
                   </div>
                 )}
               </CardContent>
@@ -915,8 +1020,8 @@ export function Dashboard() {
                   <div className="space-y-2">
                     <h4 className="font-heading font-semibold text-lg text-text-main">Nenhuma avaliação neste período</h4>
                     <p className="text-sm text-text-muted max-w-md mx-auto leading-relaxed">
-                      As avaliações de satisfação dos seus pacientes vão aparecer aqui automaticamente.
-                      Conforme seus pacientes respondem a pesquisa após o atendimento, os dados e gráficos são atualizados em tempo real.
+                      Use o formulário acima para registrar a nota após o atendimento.
+                      Os gráficos atualizam assim que a avaliação é salva.
                     </p>
                   </div>
                 </div>

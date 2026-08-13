@@ -1,4 +1,4 @@
-FICHA PRÉ-CLONAGEM — sistema-clinica02
+FICHA PRÉ-CLONAGEM — Lumen
 ======================================
 
 Comando: npm run clonar-clinica

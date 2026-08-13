@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ClinicProvider } from './contexts/ClinicContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ModulosProvider, useModulos } from './contexts/ModulosContext';
+import type { ModulosConfig } from './contexts/ModulosContext';
 import { Layout } from './components/layout/Layout';
 
 // Lazy loading: cada página só carrega quando o usuário acessa
@@ -99,17 +100,28 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-/** Prontuário: todos autenticados com módulo ativo (especialistas incluídos). */
-function ProntuarioRoute({ children }: { children: React.ReactNode }) {
+/** Bloqueia rota se o feature flag estiver desligado. */
+function ModuleRoute({
+  flag,
+  children,
+}: {
+  flag: keyof ModulosConfig;
+  children: React.ReactNode;
+}) {
   const { modulos, loading } = useModulos();
 
   if (loading) return <PageLoader />;
 
-  if (!modulos.modulo_prontuario) {
+  if (!modulos[flag]) {
     return <Navigate to="/agenda" replace />;
   }
 
   return <>{children}</>;
+}
+
+/** Prontuário: todos autenticados com módulo ativo (especialistas incluídos). */
+function ProntuarioRoute({ children }: { children: React.ReactNode }) {
+  return <ModuleRoute flag="modulo_prontuario">{children}</ModuleRoute>;
 }
 
 export default function App() {
@@ -146,7 +158,9 @@ export default function App() {
                       path="crm" 
                       element={
                         <AdminRoute>
-                          <CRM />
+                          <ModuleRoute flag="modulo_crm">
+                            <CRM />
+                          </ModuleRoute>
                         </AdminRoute>
                       } 
                     />
@@ -154,7 +168,9 @@ export default function App() {
                       path="cadastro" 
                       element={
                         <AdminRoute>
-                          <LeadsClientes />
+                          <ModuleRoute flag="modulo_leads">
+                            <LeadsClientes />
+                          </ModuleRoute>
                         </AdminRoute>
                       } 
                     />
@@ -168,10 +184,10 @@ export default function App() {
                       } 
                     />
                     <Route path="configuracoes" element={<Configuracoes />} />
-                    <Route path="financeiro" element={<AdminRoute><Financeiro /></AdminRoute>} />
+                    <Route path="financeiro" element={<AdminRoute><ModuleRoute flag="modulo_financeiro"><Financeiro /></ModuleRoute></AdminRoute>} />
                     <Route path="prontuario" element={<ProntuarioRoute><Prontuario /></ProntuarioRoute>} />
-                    <Route path="templates-clinicos" element={<AdminRoute><TemplatesClinicos /></AdminRoute>} />
-                    <Route path="estoque" element={<AdminRoute><Estoque /></AdminRoute>} />
+                    <Route path="templates-clinicos" element={<AdminRoute><ProntuarioRoute><TemplatesClinicos /></ProntuarioRoute></AdminRoute>} />
+                    <Route path="estoque" element={<AdminRoute><ModuleRoute flag="modulo_estoque"><Estoque /></ModuleRoute></AdminRoute>} />
                   </Route>
   
                   {/* Public Password Recovery Routes */}

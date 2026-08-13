@@ -34,11 +34,3 @@ export interface ClinicHours {
   hora_inicio: string | null;
   hora_fim: string | null;
 }
-
-export interface ApiToken {
-  id: string;
-  label: string;
-  token_hash: string;
-  ativo: boolean;
-  created_at: string;
-}

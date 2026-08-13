@@ -1,8 +1,10 @@
-# sistema-clinica02
+# Lumen
 
-Sistema de gestão para clínicas de estética e saúde — **painel web completo, sem n8n**.
+Painel white-label de gestão para clínicas de estética e saúde — **operação no app, sem n8n**.
 
-Repositório derivado do [sistema-clinica01](https://github.com/davicoruda-coder/sistema-clinica01), focado em operação manual no painel (agenda, CRM, prontuário, financeiro). Automação WhatsApp/n8n ficou no repositório original.
+Luz, clareza, a clínica inteira num só lugar (agenda, CRM, prontuário, financeiro).
+
+Derivado do [sistema-clinica01](https://github.com/davicoruda-coder/sistema-clinica01). Automação WhatsApp/n8n ficou no repositório original.
 
 ## O que inclui
 

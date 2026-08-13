@@ -1,6 +1,6 @@
 # 💁‍♀️ Manual da Recepcionista: Sua Jornada Diária
 
-> **Versão:** 3.1 — Atualizado em Jun/2026  
+> **Versão:** 3.2 — Atualizado em Ago/2026  
 > **Público:** Recepcionistas e especialistas da Clínica
 
 Olá! Seja bem-vinda à equipe. Como Recepcionista, você é o **rosto e a voz** da clínica. Seu objetivo é garantir que nenhum cliente fique sem resposta e que a agenda esteja sempre organizada.
@@ -66,8 +66,8 @@ A Agenda é sua tela principal e onde você passará a maior parte do dia.
 - ❌ Cancelar agendamentos — apenas gerentes
 - ❌ Criar/editar agendas (salas/profissionais) — apenas gerentes
 
-### Lembrete de Consulta:
-Confirme com o paciente por WhatsApp ou telefone quando necessário. Mantenha o **WhatsApp correto** no cadastro — a gestora usa esses dados para contato manual e futuras integrações.
+### Lembrete de consulta:
+Confirme com o paciente por WhatsApp ou telefone quando necessário. Mantenha o **WhatsApp correto** no cadastro — a equipe usa esse número para contato.
 
 ---
 
@@ -94,8 +94,8 @@ Um quadro com colunas. Cada coluna representa uma etapa da jornada do cliente:
 ```
 
 ### O que fazer:
-1. **Cada cliente que chega pelo WhatsApp** vira um "Cartão" automaticamente (a IA cria para você!)
-2. **Sua meta:** Mover os cartões conforme a conversa evolui
+1. **Cada cliente novo** vira um cartão no CRM (cadastro manual no painel ou na Agenda)
+2. **Sua meta:** Mover os cartões conforme o atendimento evolui
 3. **Atenção:** Nunca deixe um cartão parado na primeira coluna por mais de 24h!
 
 ### Como mover um cartão:
@@ -118,14 +118,14 @@ Aqui você gerencia a base completa de contatos da clínica.
 
 ### Funcionalidades disponíveis:
 - **Buscar** por nome, WhatsApp ou CPF
-- **Criar novo cadastro** manualmente (se o lead não veio pelo WhatsApp)
+- **Criar novo cadastro** manualmente
 - **Editar dados** existentes
 - **Exportar CSV** — gera planilha com todos os contatos
 
 ### Campos importantes:
 - **WhatsApp com DDD** — obrigatório! Ex: `11987654321` (sem espaços ou hífens)
-- **Data de nascimento** — preencha! A IA manda parabéns automáticos
-- **Procedimento de interesse** — ajuda a IA a personalizar mensagens
+- **Data de nascimento** — preencha quando possível (idade no CRM e no prontuário)
+- **Procedimento de interesse** — ajuda a equipe a priorizar o atendimento
 
 ---
 
@@ -212,11 +212,11 @@ O sistema funciona como um **aplicativo** no seu celular!
 
 | Regra | Por quê |
 |-------|---------|
-| Atualize o status dos agendamentos **imediatamente** | A IA depende disso para enviar pesquisas e lembretes |
-| Preencha o WhatsApp com **DDD** | Números sem DDD falham no envio automático |
-| Preencha a **data de nascimento** | A IA manda parabéns automáticos |
+| Atualize o status dos agendamentos **imediatamente** | Relatórios, CRM e prontuário dependem disso |
+| Preencha o WhatsApp com **DDD** | A equipe usa esse número para contato |
+| Preencha a **data de nascimento** | Idade no CRM e no prontuário |
 | Nunca compartilhe sua senha | Suas ações são rastreadas pelo seu login |
-| Não altere dados diretamente no banco | Use sempre o sistema para que as automações funcionem |
+| Não altere dados diretamente no banco | Use sempre o painel |
 | Consulte alergias antes de cada atendimento | Segurança do paciente é prioridade absoluta |
 
 ---
@@ -230,7 +230,7 @@ O sistema funciona como um **aplicativo** no seu celular!
 | Recebi um lead duplicado | Verifique no Cadastro se há dois registros com o mesmo WhatsApp |
 | O sistema está lento | Tente recarregar a página (Ctrl+R ou puxe a tela para baixo no celular) |
 | Esqueci minha senha | Clique em "Esqueci minha senha" na tela de login — você receberá um e-mail |
-| A IA mandou mensagem errada | Avise o administrador — o prompt da IA precisa ser ajustado |
+| Preciso de um módulo que não aparece no menu | Peça ao gestor para ativar em Configurações > Módulos |
 
 ---
 

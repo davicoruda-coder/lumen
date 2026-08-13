@@ -553,10 +553,10 @@ function DrawerLead({ isOpen, onClose, lead, onRefresh, navigate }: any) {
               {/* Resumo Conversa */}
               <div>
                 <h4 className="flex items-center gap-2 text-sm font-semibold text-text-main mb-2">
-                  <FileText className="w-4 h-4 text-primary" /> Resumo da conversa IA
+                  <FileText className="w-4 h-4 text-primary" /> Resumo do atendimento
                 </h4>
                 <div className="text-sm p-4 rounded-lg bg-primary-light/50 border border-primary/20 whitespace-pre-wrap leading-relaxed">
-                  {lead.resumo_conversa || <span className="text-text-muted italic">Nenhum resumo gerado ainda.</span>}
+                  {lead.resumo_conversa || <span className="text-text-muted italic">Nenhum resumo registrado.</span>}
                 </div>
               </div>
 

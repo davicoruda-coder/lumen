@@ -4,14 +4,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import type { BadgeVariant } from '../ui/Badge';
 
-const KANBAN_STATUSES = [
-  { label: 'Iniciou o Atendimento', value: 'iniciou_atendimento', variant: 'user' as BadgeVariant },
-  { label: 'Conversando', value: 'conversando', variant: 'agendado' as BadgeVariant },
-  { label: 'Agendado', value: 'agendado', variant: 'confirmado' as BadgeVariant },
-  { label: 'Compareceu', value: 'compareceu', variant: 'compareceu' as BadgeVariant },
-  { label: 'Cancelou o Agendamento', value: 'cancelou_agendamento', variant: 'cancelou_agendamento' as BadgeVariant },
-  { label: 'Follow Up', value: 'follow_up', variant: 'follow_up' as BadgeVariant },
-  { label: 'Abandonou a Conversa', value: 'abandonou_conversa', variant: 'abandonou_conversa' as BadgeVariant },
+const KANBAN_STATUSES: { label: string; value: BadgeVariant }[] = [
+  { label: 'Início Atendimento', value: 'inicio_atendimento' },
+  { label: 'Conversando', value: 'conversando' },
+  { label: 'Agendado', value: 'agendado' },
+  { label: 'Consulta Cancelada', value: 'cancelamento' },
+  { label: 'Compareceu', value: 'compareceu' },
+  { label: 'Follow Up 1', value: 'follow_up_1' },
+  { label: 'Follow Up 2', value: 'follow_up_2' },
+  { label: 'Follow Up 3', value: 'follow_up_3' },
+  { label: 'Não Respondeu', value: 'nao_respondeu_follow_up' },
+  { label: 'Cancelou Agendamento', value: 'cancelou_agendamento' },
+  { label: 'Abandonou Conversa', value: 'abandonou_conversa' },
 ];
 
 export function TabKanban() {
@@ -44,7 +48,7 @@ export function TabKanban() {
               {KANBAN_STATUSES.map((status) => (
                 <tr key={status.value} className="hover:bg-bg-base/50 transition-colors">
                   <td className="px-6 py-4">
-                    <Badge variant={status.variant}>{status.label}</Badge>
+                    <Badge variant={status.value}>{status.label}</Badge>
                   </td>
                   <td className="px-6 py-4 flex items-center gap-3">
                     <code className="bg-bg-base px-2 py-1 rounded text-primary font-mono text-xs">
@@ -60,8 +64,6 @@ export function TabKanban() {
                       ) : (
                         <Copy className="h-4 w-4" />
                       )}
-                      
-                      {/* Tooltip */}
                       {copied === status.value && (
                         <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-text-main text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap">
                           Copiado!
@@ -76,15 +78,12 @@ export function TabKanban() {
         </div>
 
         <div className="mt-6 p-4 bg-primary-light rounded-[14px] border border-primary/20">
-          <p className="text-sm text-text-main flex gap-2">
-            <span className="font-bold text-primary">💡</span>
-            <span>
-              Para atualizar o status de um lead via API ou integração externa, use o campo{' '}
-              <code className="bg-bg-card px-1.5 py-0.5 rounded text-primary font-mono text-xs">status</code>{' '}
-              da tabela{' '}
-              <code className="bg-bg-card px-1.5 py-0.5 rounded text-primary font-mono text-xs">leads_estetica</code>{' '}
-              com um dos valores acima.
-            </span>
+          <p className="text-sm text-text-main">
+            Para atualizar o status de um lead, use o campo{' '}
+            <code className="bg-bg-card px-1.5 py-0.5 rounded text-primary font-mono text-xs">status</code>{' '}
+            da tabela{' '}
+            <code className="bg-bg-card px-1.5 py-0.5 rounded text-primary font-mono text-xs">leads_estetica</code>{' '}
+            com um dos valores acima.
           </p>
         </div>
       </CardContent>

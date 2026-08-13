@@ -180,16 +180,15 @@ export function TabBloqueios() {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       
-      {/* Aviso de IA */}
       <div className="bg-primary/90 border border-primary/20 rounded-2xl p-4 flex items-start gap-4 shadow-md">
         <div className="bg-white/20 p-2 rounded-lg text-white">
           <Info className="w-5 h-5" />
         </div>
         <div>
-          <h4 className="font-bold text-white text-sm">Informação Importante</h4>
+          <h4 className="font-bold text-white text-sm">Informação importante</h4>
           <p className="text-xs text-white/90 mt-1 leading-relaxed font-medium">
-            As datas marcadas como "Fechado" impedem que a IA de agendamento ofereça horários aos clientes. 
-            Isso garante que feriados e folgas da equipe sejam respeitados automaticamente.
+            Datas marcadas como &quot;Fechado&quot; não aceitam novos agendamentos no painel.
+            Use para feriados, recesso e folgas da equipe.
           </p>
         </div>
       </div>

@@ -1,6 +1,6 @@
 /**
  * Utilitários — clonagem de clínica (Supabase + Vercel + app).
- * sistema-clinica02 — sem n8n / Chatwoot / Edge Functions de IA.
+ * Lumen — sem n8n / Chatwoot / Edge Functions de IA.
  */
 import fs from 'fs';
 import path from 'path';
@@ -133,7 +133,7 @@ export function buildLeiaMe(data) {
   return [
     '═══════════════════════════════════════════════════════',
     '  PACOTE SISTEMA — APP + SUPABASE + VERCEL',
-    '  (sistema-clinica02 — sem n8n)',
+    '  (Lumen — sem n8n)',
     '═══════════════════════════════════════════════════════',
     '',
     `Clínica:        ${data.clinicName}`,
@@ -194,7 +194,7 @@ export function buildPendencias(data) {
     '',
     '── B) VERCEL ──',
     '',
-    '[ ] 9. Importar repositório sistema-clinica02 na Vercel',
+    '[ ] 9. Importar repositório lumen na Vercel',
     '[ ] 10. Colar variáveis de vercel-env.txt',
     `[ ] 11. Deploy + Auth URLs + testar login`,
     `        Site URL: https://${appDomain}`,
@@ -223,7 +223,7 @@ export function saveClientManifest(clientDir, data) {
     version: 2,
     generatedAt: new Date().toISOString(),
     slug: slugify(data.clinicName),
-    product: 'sistema-clinica02',
+    product: 'lumen',
     ...data,
   };
   fs.writeFileSync(

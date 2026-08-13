@@ -112,11 +112,11 @@ export function TabAgendas() {
   };
 
   const handleDeactivateAgenda = async (agendaId: string, nome: string) => {
-    if (!confirm(`Desativar a agenda "${nome}"?\n\nA IA deixará de direcionar pacientes para essa profissional automaticamente. Os horários também serão zerados.`)) return;
+    if (!confirm(`Desativar a agenda "${nome}"?\n\nEla deixa de aparecer na tela de Agenda. Os horários também serão zerados.`)) return;
     try {
       await supabase.from('agendas').update({ ativo: false }).eq('id', agendaId);
       await supabase.from('agenda_hours').update({ aberto: false }).eq('agenda_id', agendaId);
-      alert(`✅ Agenda "${nome}" desativada!\n\nA IA já parou de direcionar pacientes para essa profissional automaticamente.`);
+      alert(`Agenda "${nome}" desativada.`);
       fetchData();
     } catch (err) {
       alert('Erro ao desativar agenda');
@@ -131,7 +131,7 @@ export function TabAgendas() {
     if (!confirm(`Reativar a agenda "${nome}"?`)) return;
     try {
       await supabase.from('agendas').update({ ativo: true }).eq('id', agendaId);
-      alert(`✅ Agenda "${nome}" reativada!\n\nA IA já voltou a incluir essa profissional nos agendamentos automaticamente.`);
+      alert(`Agenda "${nome}" reativada.`);
       fetchData();
     } catch (err) {
       alert('Erro ao reativar agenda');
@@ -157,7 +157,7 @@ export function TabAgendas() {
       });
       if (error) throw error;
       
-      alert(`✅ Agenda "${newAgendaNome.trim()}" criada com sucesso!\n\nA IA já começará a incluir essa profissional nos agendamentos.`);
+      alert(`Agenda "${newAgendaNome.trim()}" criada com sucesso.`);
       setNewAgendaNome('');
       setNewAgendaCor(CORES_AGENDA[0]);
       setNewAgendaEspecialidades('');
@@ -181,7 +181,7 @@ export function TabAgendas() {
             <CardTitle>Agendas e especialistas</CardTitle>
             <p className="text-xs text-text-muted mt-1">
               {isAdmin
-                ? 'Gerencie profissionais, especialidades e vincule especialistas. A IA se adapta automaticamente.'
+                ? 'Gerencie profissionais, especialidades e vincule especialistas à agenda.'
                 : 'Vincule cada agenda ao especialista responsável.'}
             </p>
           </div>
@@ -364,7 +364,7 @@ export function TabAgendas() {
                     </div>
 
                     <div className="flex flex-col gap-1 flex-1 sm:min-w-[200px]">
-                      <label className="text-[10px] uppercase font-bold text-text-muted px-1" title="Se vazio, a IA vai assumir que a pessoa faz tudo">
+                      <label className="text-[10px] uppercase font-bold text-text-muted px-1" title="Se vazio, a profissional aparece sem filtro de especialidade">
                         Especialidades (Opcional)
                       </label>
                       <input

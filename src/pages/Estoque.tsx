@@ -307,7 +307,7 @@ export function Estoque() {
               </CardContent></Card>
             ));
           })()}
-          {kits.length === 0 && <div className="text-center py-12 text-text-muted">Nenhum kit cadastrado. Kits permitem baixa automática de estoque por procedimento.</div>}
+          {kits.length === 0 && <div className="text-center py-12 text-text-muted">Nenhum kit cadastrado. Kits agrupam os produtos de um procedimento para facilitar a baixa de estoque.</div>}
         </div>
       )}
 

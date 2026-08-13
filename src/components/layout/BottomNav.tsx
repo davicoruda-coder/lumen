@@ -7,13 +7,11 @@ import {
   Users, 
   Calendar, 
   Settings,
-  ShieldAlert,
   DollarSign,
   ClipboardList,
   Package,
   Sun,
   Moon,
-  Key,
   Menu,
   X,
   FileText
@@ -41,8 +39,8 @@ export function BottomNav() {
       : []),
     ...(role === 'superadmin' || role === 'owner' || role === 'admin' || role === 'gestor'
       ? [
-          { to: '/crm', label: 'CRM', icon: Kanban },
-          { to: '/cadastro', label: 'Cadastro', icon: Users }
+          ...(modulos.modulo_crm ? [{ to: '/crm', label: 'CRM', icon: Kanban }] : []),
+          ...(modulos.modulo_leads ? [{ to: '/cadastro', label: 'Cadastro', icon: Users }] : []),
         ]
       : []),
     { to: '/agenda', label: 'Agenda', icon: Calendar },

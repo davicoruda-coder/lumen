@@ -1,4 +1,4 @@
-# Playbook Técnico — sistema-clinica02
+# Playbook Técnico — Lumen
 
 > Deploy white-label sem n8n. Ver também `CLONAGEM_CLINICA.md`.
 
@@ -25,8 +25,8 @@ npm run clonar-clinica
 ## Clonar repositório
 
 ```bash
-git clone https://github.com/davicoruda-coder/sistema-clinica02.git
-cd sistema-clinica02
+git clone https://github.com/davicoruda-coder/lumen.git
+cd lumen
 npm install
 ```
 

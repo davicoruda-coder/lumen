@@ -1,4 +1,4 @@
-# MANUAL MESTRE: sistema-clinica02
+# MANUAL MESTRE: Lumen
 
 > **Versão:** 2.0 — Painel sem n8n (Jun/2026)  
 > **Automação WhatsApp:** use repositório `sistema-clinica01` ou roadmap em `VISAO_PRODUTO.md`
@@ -35,7 +35,7 @@ Este documento é a **base de conhecimento definitiva** para quem opera, vende o
 ### Estrutura de Pastas do Projeto
 
 ```
-sistema-clinica02/
+lumen/
 ├── src/
 ├── documentacao/
 ├── clientes/              # Pacotes gerados (gitignored)
@@ -77,7 +77,7 @@ O plano base cobre até **3 profissionais/agendas** ativos. O sistema bloqueia a
 
 ---
 
-## 4. AUTOMAÇÃO E IA (sistema-clinica02)
+## 4. AUTOMAÇÃO E IA (Lumen)
 
 Este repositório **não inclui n8n, Chatwoot ou UAZAPI**. Operação via painel web:
 

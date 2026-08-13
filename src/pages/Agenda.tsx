@@ -1080,7 +1080,6 @@ function ModalViewAgendamento({ isOpen, onClose, event, onSuccess, onEventUpdate
         )}
 
         <div className="grid grid-cols-1 gap-3">
-          {/* Resumo da IA com visual de destaque */}
           <div className={cn(
             "col-span-1 sm:col-span-2 p-4 rounded-2xl border shadow-inner mt-1",
             props.leads_estetica?.resumo_conversa 
@@ -1089,7 +1088,7 @@ function ModalViewAgendamento({ isOpen, onClose, event, onSuccess, onEventUpdate
           )}>
             <div className="flex items-center gap-2 mb-2">
               <div className={cn("w-2 h-2 rounded-full", props.leads_estetica?.resumo_conversa ? "bg-primary animate-pulse" : "bg-text-muted/30")} />
-              <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">Resumo da Conversa (IA)</span>
+              <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">Resumo do atendimento</span>
             </div>
             <p className={cn(
               "text-sm leading-relaxed",
@@ -1099,7 +1098,7 @@ function ModalViewAgendamento({ isOpen, onClose, event, onSuccess, onEventUpdate
             )}>
               {props.leads_estetica?.resumo_conversa 
                 ? `"${props.leads_estetica.resumo_conversa}"` 
-                : "Nenhum resumo da IA disponível para este paciente no momento."}
+                : "Nenhum resumo registrado para este paciente."}
             </p>
           </div>
         </div>

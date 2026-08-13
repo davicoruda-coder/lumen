@@ -1,4 +1,4 @@
-# Clonagem de clínica — sistema-clinica02
+# Clonagem de clínica — Lumen
 
 Fluxo **único**: app + Supabase + Vercel. Sem fase 2 n8n.
 
@@ -27,6 +27,12 @@ Se o banco foi criado com schema antigo (n8n), rode opcionalmente:
 `documentacao/MIGRATION_n8n_legacy.sql`
 
 Depois recrie `get_or_create_lead` a partir do MASTER_SCHEMA.sql seção 5.6.
+
+## Clínicas já implantadas (v4.1)
+
+Se o owner não consegue atribuir o papel **Gestor**, rode no SQL Editor:
+
+`documentacao/PATCH_rls_gestor_v41.sql`
 
 ## Diferença do sistema-clinica01
 

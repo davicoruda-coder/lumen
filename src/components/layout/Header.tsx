@@ -11,6 +11,7 @@ const routeTitles: Record<string, string> = {
   '/configuracoes': 'Configurações',
   '/financeiro': 'Financeiro',
   '/prontuario': 'Prontuário Eletrônico',
+  '/templates-clinicos': 'Modelos Clínicos',
   '/estoque': 'Controle de Estoque',
 };
 

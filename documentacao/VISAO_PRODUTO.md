@@ -1,4 +1,4 @@
-# Visão de produto — sistema-clinica02
+# Visão de produto — Lumen
 
 ## Posicionamento
 
@@ -28,8 +28,8 @@ Paciente WhatsApp   → Meta Business Agent → Google Calendar
 
 ## Relação com sistema-clinica01
 
-- **01:** template completo com n8n (VivaBem, automação WhatsApp)
-- **02:** produto enxuto, menor custo operacional, evolução nativa
+- **sistema-clinica01:** template completo com n8n (VivaBem, automação WhatsApp)
+- **Lumen:** painel enxuto, menor custo operacional, evolução nativa
 
 ## Comercial (referência)
 

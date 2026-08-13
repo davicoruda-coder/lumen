@@ -1,3 +1,4 @@
+import type { ElementType } from 'react';
 import { useModulos } from '../../contexts/ModulosContext';
 import type { ModulosConfig } from '../../contexts/ModulosContext';
 import { Card, CardContent } from '../ui/Card';
@@ -6,34 +7,25 @@ import {
   ClipboardList,
   Package,
   Kanban,
-  Calendar,
   Users,
   Loader2,
-  Sparkles,
 } from 'lucide-react';
 
 interface ModuloCard {
   key: keyof ModulosConfig;
   label: string;
   desc: string;
-  icon: React.ElementType;
+  icon: ElementType;
   color: string;
   bgColor: string;
 }
 
+/** Agenda é núcleo (sempre visível). Campanhas não tem tela ainda. */
 const MODULOS: ModuloCard[] = [
-  {
-    key: 'modulo_agenda',
-    label: 'Agenda',
-    desc: 'Agendamento inteligente com IA, visualização semanal/diária e integração WhatsApp.',
-    icon: Calendar,
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-50',
-  },
   {
     key: 'modulo_crm',
     label: 'CRM',
-    desc: 'Pipeline Kanban para acompanhamento de leads, etapas de vendas e automações.',
+    desc: 'Pipeline Kanban para acompanhamento de leads e etapas de atendimento.',
     icon: Kanban,
     color: 'text-purple-600',
     bgColor: 'bg-purple-50',
@@ -41,7 +33,7 @@ const MODULOS: ModuloCard[] = [
   {
     key: 'modulo_leads',
     label: 'Leads e Clientes',
-    desc: 'Gestão completa de leads e clientes com filtros, exportação CSV/PDF e histórico.',
+    desc: 'Cadastro de leads e clientes com filtros, exportação CSV/PDF e histórico.',
     icon: Users,
     color: 'text-emerald-600',
     bgColor: 'bg-emerald-50',
@@ -49,7 +41,7 @@ const MODULOS: ModuloCard[] = [
   {
     key: 'modulo_financeiro',
     label: 'Financeiro',
-    desc: 'Contas a pagar/receber, fluxo de caixa, comissionamento de profissionais e relatórios.',
+    desc: 'Contas a pagar/receber, fluxo de caixa, comissionamento e relatórios.',
     icon: DollarSign,
     color: 'text-amber-600',
     bgColor: 'bg-amber-50',
@@ -57,7 +49,7 @@ const MODULOS: ModuloCard[] = [
   {
     key: 'modulo_prontuario',
     label: 'Prontuário Eletrônico',
-    desc: 'Ficha clínica, anamnese personalizada, evolução do paciente e galeria antes/depois.',
+    desc: 'Ficha clínica, anamnese, evolução do paciente e galeria antes/depois.',
     icon: ClipboardList,
     color: 'text-rose-600',
     bgColor: 'bg-rose-50',
@@ -65,18 +57,10 @@ const MODULOS: ModuloCard[] = [
   {
     key: 'modulo_estoque',
     label: 'Controle de Estoque',
-    desc: 'Produtos, movimentações de entrada/saída, alertas de mínimo e baixa automática.',
+    desc: 'Produtos, movimentações de entrada/saída, kits e alertas de mínimo.',
     icon: Package,
     color: 'text-cyan-600',
     bgColor: 'bg-cyan-50',
-  },
-  {
-    key: 'modulo_campanhas',
-    label: 'Marketing & Campanhas',
-    desc: 'Gestão de campanhas de aniversário, reativação de clientes e cupons de desconto.',
-    icon: Sparkles,
-    color: 'text-pink-600',
-    bgColor: 'bg-pink-50',
   },
 ];
 
@@ -91,16 +75,15 @@ export function TabModulos() {
     );
   }
 
-  const ativos = Object.values(modulos).filter(Boolean).length;
+  const ativos = MODULOS.filter((m) => modulos[m.key]).length;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h3 className="text-lg font-heading font-semibold text-text-main">Módulos do Sistema</h3>
           <p className="text-sm text-text-muted mt-1">
-            Ative ou desative módulos para esta clínica. Módulos desativados ficam invisíveis para o cliente.
+            A Agenda fica sempre disponível. Os demais módulos podem ser ligados ou desligados para esta clínica.
           </p>
         </div>
         <div className="flex items-center gap-2 px-4 py-2 rounded-[14px] bg-primary-light/40 border border-primary/20 shrink-0">
@@ -109,7 +92,6 @@ export function TabModulos() {
         </div>
       </div>
 
-      {/* Grid de Módulos */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {MODULOS.map((mod) => {
           const Icon = mod.icon;
@@ -129,7 +111,6 @@ export function TabModulos() {
                   <div className={`p-2.5 rounded-[14px] ${ativo ? mod.bgColor : 'bg-bg-base'}`}>
                     <Icon className={`w-5 h-5 ${ativo ? mod.color : 'text-text-muted'}`} />
                   </div>
-                  {/* Toggle */}
                   <button
                     onClick={() => updateModulo(mod.key, !ativo)}
                     className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-primary/50 ${
@@ -164,15 +145,12 @@ export function TabModulos() {
         })}
       </div>
 
-      {/* Aviso */}
       <div className="flex items-start gap-3 p-4 rounded-[14px] bg-primary/5 border border-primary/20 text-sm text-text-muted">
-        <span className="text-primary text-base">⚙️</span>
         <div>
-          <p className="font-medium text-text-main mb-1">Personalização do Workspace</p>
+          <p className="font-medium text-text-main mb-1">Personalização do workspace</p>
           <p>
-            Ative ou desative os módulos do seu sistema para simplificar o menu lateral da sua equipe. 
-            Ao ocultar um módulo, todos os dados cadastrados permanecem salvos em total segurança 
-            e reaparecem instantaneamente caso você decida reativá-lo no futuro.
+            Módulo desativado some do menu e da URL. Os dados cadastrados permanecem no banco
+            e voltam a aparecer quando o módulo for reativado.
           </p>
         </div>
       </div>

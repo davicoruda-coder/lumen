@@ -15,8 +15,6 @@ import {
   LogOut,
   Sun,
   Moon,
-  Key,
-  ShieldAlert,
   DollarSign,
   ClipboardList,
   Package,
@@ -42,11 +40,10 @@ export function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
       ? [{ to: '/visao-geral', label: 'Visão Geral', icon: LayoutDashboard }] 
       : []),
     
-    // CRM and Leads: Only for superadmin and owner
     ...(role === 'superadmin' || role === 'owner' || role === 'admin' || role === 'gestor'
       ? [
-          { to: '/crm', label: 'CRM', icon: Kanban },
-          { to: '/cadastro', label: 'Cadastro', icon: Users }
+          ...(modulos.modulo_crm ? [{ to: '/crm', label: 'CRM', icon: Kanban }] : []),
+          ...(modulos.modulo_leads ? [{ to: '/cadastro', label: 'Cadastro', icon: Users }] : []),
         ]
       : []),
     
