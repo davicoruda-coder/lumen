@@ -14,6 +14,10 @@ import { useAuth } from '../contexts/AuthContext';
 
 type TabType = 'leads' | 'clientes';
 type FilterType = 'hoje' | 'ontem' | '7dias' | '14semanas' | 'mes' | 'ano' | 'custom';
+const ITEMS_PER_PAGE = 20;
+const EXPORT_BATCH_SIZE = 500;
+const LEAD_LIST_FIELDS =
+  'id, nome_lead, whatsapp_lead, cpf, data_nascimento, procedimento_interesse, motivo_contato, observacoes, valor_pago, status, data_agendamento, data_primeira_visita, ultima_mensagem, inicio_atendimento';
 
 export function LeadsClientes() {
   const { role } = useAuth();
@@ -27,9 +31,10 @@ export function LeadsClientes() {
   const [loading, setLoading] = useState(true);
   const [leads, setLeads] = useState<any[]>([]);
   const [clientes, setClientes] = useState<any[]>([]);
+  const [tabCounts, setTabCounts] = useState({ leads: 0, clientes: 0 });
   
   const [page, setPage] = useState(1);
-  const ITEMS_PER_PAGE = 20;
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
   // Drawer
   const [selectedItem, setSelectedItem] = useState<any>(null);
@@ -46,8 +51,15 @@ export function LeadsClientes() {
   }, [filter]);
 
   useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim());
+    }, 300);
+    return () => window.clearTimeout(timeoutId);
+  }, [searchQuery]);
+
+  useEffect(() => {
     fetchData();
-  }, [dateRange, activeTab]);
+  }, [dateRange, activeTab, page, debouncedSearch]);
 
   if (!role || (role !== 'superadmin' && role !== 'admin' && role !== 'owner' && role !== 'gestor')) {
     return null;
@@ -66,65 +78,92 @@ export function LeadsClientes() {
       case 'custom': return;
     }
     setDateRange({ start, end });
+    setPage(1);
   };
 
   const fetchData = async () => {
     setLoading(true);
-    setPage(1);
 
     const startStr = dateRange.start.toISOString();
     const endStr = dateRange.end.toISOString();
+    const from = (page - 1) * ITEMS_PER_PAGE;
+    const safeSearch = debouncedSearch.replace(/[(),.%]/g, '');
 
     try {
-      // Fetch ALL records in range to populate counts for both tabs
-      const { data: allData } = await supabase.from('leads_estetica')
-        .select('*')
+      let activeQuery = supabase
+        .from('leads_estetica')
+        .select(LEAD_LIST_FIELDS, { count: 'exact' })
+        .gte('inicio_atendimento', startStr)
+        .lte('inicio_atendimento', endStr)
+        .order(activeTab === 'clientes' ? 'data_primeira_visita' : 'inicio_atendimento', {
+          ascending: false,
+          nullsFirst: false,
+        })
+        .range(from, from + ITEMS_PER_PAGE - 1);
+
+      activeQuery = activeTab === 'clientes'
+        ? activeQuery.eq('status', 'compareceu')
+        : activeQuery.neq('status', 'compareceu');
+
+      let otherCountQuery = supabase
+        .from('leads_estetica')
+        .select('id', { count: 'exact', head: true })
         .gte('inicio_atendimento', startStr)
         .lte('inicio_atendimento', endStr);
 
-      if (allData) {
-        // 1. Set Leads
-        const leadsData = allData.filter(item => item.status !== 'compareceu')
-          .sort((a, b) => {
-            const dateA = a.ultima_mensagem ? new Date(a.ultima_mensagem).getTime() : 0;
-            const dateB = b.ultima_mensagem ? new Date(b.ultima_mensagem).getTime() : 0;
-            return dateB - dateA;
-          });
-        setLeads(leadsData);
+      otherCountQuery = activeTab === 'clientes'
+        ? otherCountQuery.neq('status', 'compareceu')
+        : otherCountQuery.eq('status', 'compareceu');
 
-        // 2. Set Clientes (with extra agendamento data)
-        const clientsRaw = allData.filter(item => item.status === 'compareceu');
-        
-        if (clientsRaw.length > 0) {
-          const { data: agData } = await supabase.from('agendamentos_estetica')
-            .select('nome_lead, status, data_hora_inicio')
-            .order('data_hora_inicio', { ascending: true });
-          
-          const ags = agData || [];
-          const nowStr = new Date().toISOString();
+      if (safeSearch) {
+        const searchFilter = `nome_lead.ilike.%${safeSearch}%,whatsapp_lead.ilike.%${safeSearch}%`;
+        activeQuery = activeQuery.or(searchFilter);
+        otherCountQuery = otherCountQuery.or(searchFilter);
+      }
 
-          const finalClientes = clientsRaw.map((l: any) => {
-            const cAgs = ags.filter(a => a.nome_lead === l.nome_lead);
-            const procedimentosQtd = cAgs.filter(a => a.status === 'compareceu').length;
-            const proximo = cAgs.find(a => a.data_hora_inicio >= nowStr && a.status !== 'cancelado');
-            
-            return {
-              ...l,
-              leadData: l,
-              procedimentosQtd,
-              proximoAgendamento: proximo ? proximo.data_hora_inicio : null,
-              todosAgendamentos: cAgs
-            };
-          }).sort((a, b) => {
-            const dateA = a.data_primeira_visita ? new Date(a.data_primeira_visita).getTime() : 0;
-            const dateB = b.data_primeira_visita ? new Date(b.data_primeira_visita).getTime() : 0;
-            return dateB - dateA;
-          });
+      const [{ data, count, error }, { count: otherCount, error: countError }] =
+        await Promise.all([activeQuery, otherCountQuery]);
+      if (error) throw error;
+      if (countError) throw countError;
 
-          setClientes(finalClientes);
-        } else {
-          setClientes([]);
-        }
+      const rows = data || [];
+      setTabCounts(activeTab === 'clientes'
+        ? { leads: otherCount || 0, clientes: count || 0 }
+        : { leads: count || 0, clientes: otherCount || 0 });
+
+      if (activeTab === 'leads') {
+        setLeads(rows);
+      } else if (rows.length === 0) {
+        setClientes([]);
+      } else {
+        const leadIds = rows.map((item) => item.id);
+        const { data: agData, error: agError } = await supabase
+          .from('agendamentos_estetica')
+          .select('lead_id, status, data_hora_inicio')
+          .in('lead_id', leadIds)
+          .order('data_hora_inicio', { ascending: true });
+        if (agError) throw agError;
+
+        const appointmentsByLead = new Map<string, any[]>();
+        (agData || []).forEach((appointment: any) => {
+          const appointments = appointmentsByLead.get(appointment.lead_id) || [];
+          appointments.push(appointment);
+          appointmentsByLead.set(appointment.lead_id, appointments);
+        });
+        const nowStr = new Date().toISOString();
+        setClientes(rows.map((lead: any) => {
+          const appointments = appointmentsByLead.get(lead.id) || [];
+          const nextAppointment = appointments.find(
+            (appointment) => appointment.data_hora_inicio >= nowStr && appointment.status !== 'cancelado'
+          );
+          return {
+            ...lead,
+            leadData: lead,
+            procedimentosQtd: appointments.filter((appointment) => appointment.status === 'compareceu').length,
+            proximoAgendamento: nextAppointment?.data_hora_inicio || null,
+            todosAgendamentos: appointments,
+          };
+        }));
       }
     } catch {
       // Falha ao carregar — mantém o estado atual
@@ -133,15 +172,78 @@ export function LeadsClientes() {
     }
   };
 
-  const exportToCSV = () => {
-    const dataToExport = filteredData;
-    if (dataToExport.length === 0) return alert('Nenhum dado para exportar.');
+  const fetchExportData = async () => {
+    const startStr = dateRange.start.toISOString();
+    const endStr = dateRange.end.toISOString();
+    const safeSearch = debouncedSearch.replace(/[(),.%]/g, '');
+    const allRows: any[] = [];
 
-    let headers = activeTab === 'leads' 
-      ? ['Nome', 'WhatsApp', 'CPF', 'Idade', 'Procedimento', 'Status', 'Iniciou em']
-      : ['Nome', 'WhatsApp', 'CPF', 'Idade', 'Procedimentos Realizados', 'Cliente Desde'];
+    for (let from = 0; ; from += EXPORT_BATCH_SIZE) {
+      let query = supabase
+        .from('leads_estetica')
+        .select(LEAD_LIST_FIELDS)
+        .gte('inicio_atendimento', startStr)
+        .lte('inicio_atendimento', endStr)
+        .order(activeTab === 'clientes' ? 'data_primeira_visita' : 'inicio_atendimento', {
+          ascending: false,
+          nullsFirst: false,
+        })
+        .range(from, from + EXPORT_BATCH_SIZE - 1);
 
+      query = activeTab === 'clientes'
+        ? query.eq('status', 'compareceu')
+        : query.neq('status', 'compareceu');
+      if (safeSearch) {
+        query = query.or(`nome_lead.ilike.%${safeSearch}%,whatsapp_lead.ilike.%${safeSearch}%`);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      const batch = data || [];
+      allRows.push(...batch);
+      if (batch.length < EXPORT_BATCH_SIZE) break;
+    }
+
+    if (activeTab === 'leads' || allRows.length === 0) return allRows;
+
+    const appointments: any[] = [];
+    for (let index = 0; index < allRows.length; index += 100) {
+      const leadIds = allRows.slice(index, index + 100).map((item) => item.id);
+      const { data, error } = await supabase
+        .from('agendamentos_estetica')
+        .select('lead_id, status, data_hora_inicio')
+        .in('lead_id', leadIds)
+        .order('data_hora_inicio', { ascending: true });
+      if (error) throw error;
+      appointments.push(...(data || []));
+    }
+
+    const appointmentsByLead = new Map<string, any[]>();
+    appointments.forEach((appointment) => {
+      const rows = appointmentsByLead.get(appointment.lead_id) || [];
+      rows.push(appointment);
+      appointmentsByLead.set(appointment.lead_id, rows);
+    });
+
+    return allRows.map((lead) => {
+      const leadAppointments = appointmentsByLead.get(lead.id) || [];
+      return {
+        ...lead,
+        leadData: lead,
+        procedimentosQtd: leadAppointments.filter((appointment) => appointment.status === 'compareceu').length,
+      };
+    });
+  };
+
+  const exportToCSV = async () => {
     try {
+      const dataToExport = await fetchExportData();
+      if (dataToExport.length === 0) return alert('Nenhum dado para exportar.');
+
+      const headers = activeTab === 'leads'
+        ? ['Nome', 'WhatsApp', 'CPF', 'Idade', 'Procedimento', 'Status', 'Iniciou em']
+        : ['Nome', 'WhatsApp', 'CPF', 'Idade', 'Procedimentos Realizados', 'Cliente Desde'];
+
       const csvContent = [
         headers.join(','),
         ...dataToExport.map(row => {
@@ -180,32 +282,34 @@ export function LeadsClientes() {
   };
 
   const exportToPDF = async () => {
-    const { jsPDF } = await import('jspdf');
-    const { default: autoTable } = await import('jspdf-autotable');
+    try {
+      const dataToExport = await fetchExportData();
+      if (dataToExport.length === 0) return alert('Nenhum dado para exportar.');
+      const [{ jsPDF }, { default: autoTable }] = await Promise.all([
+        import('jspdf'),
+        import('jspdf-autotable'),
+      ]);
 
-    const doc = new jsPDF();
-    const dataToExport = filteredData;
-    if (dataToExport.length === 0) return alert('Nenhum dado para exportar.');
-
-    const title = activeTab === 'leads' ? 'Relatório de Leads' : 'Relatório de Clientes';
-    doc.text(title, 14, 15);
+      const doc = new jsPDF();
+      const title = activeTab === 'leads' ? 'Relatório de Leads' : 'Relatório de Clientes';
+      doc.text(title, 14, 15);
     
-    let headers = activeTab === 'leads'
-      ? [['Nome', 'WhatsApp', 'CPF', 'Idade', 'Procedimento', 'Status', 'Iniciou em']]
-      : [['Nome', 'WhatsApp', 'CPF', 'Idade', 'Proc. Realizados', 'Cliente Desde']];
+      const headers = activeTab === 'leads'
+        ? [['Nome', 'WhatsApp', 'CPF', 'Idade', 'Procedimento', 'Status', 'Iniciou em']]
+        : [['Nome', 'WhatsApp', 'CPF', 'Idade', 'Proc. Realizados', 'Cliente Desde']];
 
-    let body = dataToExport.map(row => {
-      if (activeTab === 'leads') {
-        return [
-          row.nome_lead || '',
-          row.whatsapp_lead || '',
-          row.cpf ? formatCPF(row.cpf) : '',
-          row.data_nascimento ? `${calculateAge(row.data_nascimento)}a` : '',
-          row.procedimento_interesse || '',
-          row.status || '',
-          format(parseISO(row.inicio_atendimento), 'dd/MM/yy')
-        ];
-      } else {
+      const body = dataToExport.map(row => {
+        if (activeTab === 'leads') {
+          return [
+            row.nome_lead || '',
+            row.whatsapp_lead || '',
+            row.cpf ? formatCPF(row.cpf) : '',
+            row.data_nascimento ? `${calculateAge(row.data_nascimento)}a` : '',
+            row.procedimento_interesse || '',
+            row.status || '',
+            format(parseISO(row.inicio_atendimento), 'dd/MM/yy')
+          ];
+        }
         return [
           row.leadData?.nome_lead || '',
           row.leadData?.whatsapp_lead || '',
@@ -214,30 +318,26 @@ export function LeadsClientes() {
           row.procedimentosQtd || 0,
           row.inicio_atendimento ? format(parseISO(row.inicio_atendimento), 'dd/MM/yy') : '-'
         ];
-      }
-    });
+      });
 
-    autoTable(doc, {
-      head: headers,
-      body: body,
-      startY: 20,
-      theme: 'grid',
-      headStyles: { fillColor: [196, 126, 126] } // Usando a cor primária #C47E7E em RGB
-    });
+      autoTable(doc, {
+        head: headers,
+        body,
+        startY: 20,
+        theme: 'grid',
+        headStyles: { fillColor: [196, 126, 126] }
+      });
 
-    doc.save(`relatorio_${activeTab}_${format(new Date(), 'ddMMyyyy')}.pdf`);
+      doc.save(`relatorio_${activeTab}_${format(new Date(), 'ddMMyyyy')}.pdf`);
+    } catch {
+      alert('Ocorreu um erro ao gerar o arquivo PDF.');
+    }
   };
 
-  // Searching logic
-  const filteredData = (activeTab === 'leads' ? leads : clientes).filter((item: any) => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    const l = activeTab === 'leads' ? item : item.leadData;
-    return (l.nome_lead?.toLowerCase() || '').includes(q) || (l.whatsapp_lead || '').includes(q);
-  });
-
-  const paginatedData = filteredData.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
-  const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
+  const filteredData = activeTab === 'leads' ? leads : clientes;
+  const paginatedData = filteredData;
+  const activeCount = tabCounts[activeTab];
+  const totalPages = Math.ceil(activeCount / ITEMS_PER_PAGE);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300 relative pt-0">
@@ -277,9 +377,9 @@ export function LeadsClientes() {
           ))}
         </div>
         <div className="flex items-center gap-2">
-          <Input type="date" value={format(dateRange.start, 'yyyy-MM-dd')} max={format(new Date(), 'yyyy-MM-dd')} onChange={e => { setFilter('custom'); setDateRange(p => ({ ...p, start: startOfDay(parseISO(e.target.value)) })); }} className="w-36 h-9" />
+          <Input type="date" value={format(dateRange.start, 'yyyy-MM-dd')} max={format(new Date(), 'yyyy-MM-dd')} onChange={e => { setFilter('custom'); setPage(1); setDateRange(p => ({ ...p, start: startOfDay(parseISO(e.target.value)) })); }} className="w-36 h-9" />
           <span className="text-text-muted">até</span>
-          <Input type="date" value={format(dateRange.end, 'yyyy-MM-dd')} max={format(new Date(), 'yyyy-MM-dd')} onChange={e => { setFilter('custom'); setDateRange(p => ({ ...p, end: endOfDay(parseISO(e.target.value)) })); }} className="w-36 h-9" />
+          <Input type="date" value={format(dateRange.end, 'yyyy-MM-dd')} max={format(new Date(), 'yyyy-MM-dd')} onChange={e => { setFilter('custom'); setPage(1); setDateRange(p => ({ ...p, end: endOfDay(parseISO(e.target.value)) })); }} className="w-36 h-9" />
         </div>
       </div>
 
@@ -287,18 +387,18 @@ export function LeadsClientes() {
       <div className="flex flex-col md:flex-row justify-between gap-4 border-b border-border-card pb-4">
         <div className="flex gap-4">
           <button 
-            onClick={() => setActiveTab('leads')}
+            onClick={() => { setActiveTab('leads'); setPage(1); }}
             className={cn("px-4 py-2 font-heading text-lg font-medium transition-colors border-b-2 -mb-[17px]", activeTab === 'leads' ? "border-primary text-primary" : "border-transparent text-text-muted")}
           >
             Leads 
-            <span className={cn("ml-2 text-xs py-0.5 px-2 rounded-full", activeTab === 'leads' ? "bg-primary-light text-primary" : "bg-bg-base text-text-muted")}>{leads.length}</span>
+            <span className={cn("ml-2 text-xs py-0.5 px-2 rounded-full", activeTab === 'leads' ? "bg-primary-light text-primary" : "bg-bg-base text-text-muted")}>{tabCounts.leads}</span>
           </button>
           <button 
-            onClick={() => setActiveTab('clientes')}
+            onClick={() => { setActiveTab('clientes'); setPage(1); }}
             className={cn("px-4 py-2 font-heading text-lg font-medium transition-colors border-b-2 -mb-[17px]", activeTab === 'clientes' ? "border-success text-success" : "border-transparent text-text-muted")}
           >
             Clientes
-            <span className={cn("ml-2 text-xs py-0.5 px-2 rounded-[14px]", activeTab === 'clientes' ? "bg-success/20 text-success" : "bg-bg-base text-text-muted")}>{clientes.length}</span>
+            <span className={cn("ml-2 text-xs py-0.5 px-2 rounded-[14px]", activeTab === 'clientes' ? "bg-success/20 text-success" : "bg-bg-base text-text-muted")}>{tabCounts.clientes}</span>
           </button>
         </div>
         <div className="flex items-center gap-3">
@@ -450,7 +550,9 @@ export function LeadsClientes() {
           {/* Paginação */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between p-4 border-t border-border-card">
-              <span className="text-sm text-text-muted">Página {page} de {totalPages}</span>
+              <span className="text-sm text-text-muted">
+                Página {page} de {totalPages} · {activeCount} registros
+              </span>
               <div className="flex gap-2">
                 <Button size="sm" variant="secondary" onClick={() => setPage(page - 1)} disabled={page === 1}>Anterior</Button>
                 <Button size="sm" variant="secondary" onClick={() => setPage(page + 1)} disabled={page === totalPages}>Próxima</Button>

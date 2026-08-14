@@ -16,39 +16,28 @@ import { HScrollArea } from '../components/ui/HScrollArea';
 
 /** Colunas do funil clínico. Status legados de automação são agrupados aqui. */
 const COLUMNS = [
-  { id: 'inicio_atendimento', title: 'Novo contato', dotClass: 'bg-white shadow-sm', headerBg: 'bg-primary border-primary text-[color:var(--primary-foreground)] shadow-inner opacity-90' },
-  { id: 'conversando', title: 'Em contato', dotClass: 'bg-white shadow-sm', headerBg: 'bg-primary border-primary text-[color:var(--primary-foreground)] shadow-inner opacity-95' },
-  { id: 'agendado', title: 'Agendado', dotClass: 'bg-white shadow-sm', headerBg: 'bg-primary border-primary text-[color:var(--primary-foreground)] shadow-inner opacity-100' },
-  { id: 'compareceu', title: 'Compareceu', dotClass: 'bg-white shadow-sm', headerBg: 'bg-success border-success text-white shadow-inner opacity-90' },
-  { id: 'follow_up_1', title: 'Acompanhar', dotClass: 'bg-white shadow-sm', headerBg: 'bg-primary border-primary text-[color:var(--primary-foreground)] shadow-inner opacity-85' },
-  { id: 'nao_respondeu_follow_up', title: 'Sem retorno', dotClass: 'bg-white/50', headerBg: 'bg-bg-base border-border-card text-text-muted opacity-90' },
-  { id: 'cancelamento', title: 'Cancelado', dotClass: 'bg-white/50', headerBg: 'bg-error border-error text-white opacity-90' },
+  { id: 'inicio_atendimento', statuses: ['inicio_atendimento'], title: 'Novo contato', dotClass: 'bg-white shadow-sm', headerBg: 'bg-primary border-primary text-[color:var(--primary-foreground)] shadow-inner opacity-90' },
+  { id: 'conversando', statuses: ['conversando'], title: 'Em contato', dotClass: 'bg-white shadow-sm', headerBg: 'bg-primary border-primary text-[color:var(--primary-foreground)] shadow-inner opacity-95' },
+  { id: 'agendado', statuses: ['agendado'], title: 'Agendado', dotClass: 'bg-white shadow-sm', headerBg: 'bg-primary border-primary text-[color:var(--primary-foreground)] shadow-inner opacity-100' },
+  { id: 'compareceu', statuses: ['compareceu'], title: 'Compareceu', dotClass: 'bg-white shadow-sm', headerBg: 'bg-success border-success text-white shadow-inner opacity-90' },
+  { id: 'follow_up_1', statuses: ['follow_up_1', 'follow_up_2', 'follow_up_3'], title: 'Acompanhar', dotClass: 'bg-white shadow-sm', headerBg: 'bg-primary border-primary text-[color:var(--primary-foreground)] shadow-inner opacity-85' },
+  { id: 'nao_respondeu_follow_up', statuses: ['nao_respondeu_follow_up', 'abandonou_conversa'], title: 'Sem retorno', dotClass: 'bg-white/50', headerBg: 'bg-bg-base border-border-card text-text-muted opacity-90' },
+  { id: 'cancelamento', statuses: ['cancelamento', 'cancelou_agendamento'], title: 'Cancelado', dotClass: 'bg-white/50', headerBg: 'bg-error border-error text-white opacity-90' },
 ] as const;
-
-const STATUS_TO_COLUMN: Record<string, string> = {
-  inicio_atendimento: 'inicio_atendimento',
-  conversando: 'conversando',
-  agendado: 'agendado',
-  compareceu: 'compareceu',
-  follow_up_1: 'follow_up_1',
-  follow_up_2: 'follow_up_1',
-  follow_up_3: 'follow_up_1',
-  nao_respondeu_follow_up: 'nao_respondeu_follow_up',
-  abandonou_conversa: 'nao_respondeu_follow_up',
-  cancelamento: 'cancelamento',
-  cancelou_agendamento: 'cancelamento',
-};
 
 const CRM_LEAD_FIELDS =
   'id, nome_lead, whatsapp_lead, cpf, data_nascimento, procedimento_interesse, motivo_contato, status, data_agendamento, data_primeira_visita, nota_nps, resumo_conversa, ultima_mensagem, inicio_atendimento';
+const COLUMN_PAGE_SIZE = 40;
 
 
 export function CRM() {
   const { role } = useAuth();
   const navigate = useNavigate();
-  const [leads, setLeads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [columnsData, setColumnsData] = useState<Record<string, any[]>>({});
+  const [columnCounts, setColumnCounts] = useState<Record<string, number>>({});
+  const [columnPages, setColumnPages] = useState<Record<string, number>>({});
+  const [loadingMoreColumn, setLoadingMoreColumn] = useState<string | null>(null);
   const [selectedLead, setSelectedLead] = useState<any>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [newLeadModalOpen, setNewLeadModalOpen] = useState(false);
@@ -63,26 +52,66 @@ export function CRM() {
   const fetchLeads = async () => {
     setLoading(true);
     try {
-      const { data } = await supabase
-        .from('leads_estetica')
-        .select(CRM_LEAD_FIELDS)
-        .order('inicio_atendimento', { ascending: false, nullsFirst: false });
-      
-      const lds = data || [];
-      setLeads(lds);
+      const results = await Promise.all(
+        COLUMNS.map(async (column) => {
+          const { data, count, error } = await supabase
+            .from('leads_estetica')
+            .select(CRM_LEAD_FIELDS, { count: 'exact' })
+            .in('status', [...column.statuses])
+            .order('inicio_atendimento', { ascending: false, nullsFirst: false })
+            .range(0, COLUMN_PAGE_SIZE - 1);
+
+          if (error) throw error;
+          return { columnId: column.id, rows: data || [], count: count || 0 };
+        })
+      );
 
       const grouped: Record<string, any[]> = {};
-      COLUMNS.forEach(c => grouped[c.id] = []);
-      lds.forEach(l => {
-        const columnId = STATUS_TO_COLUMN[l.status] || 'inicio_atendimento';
-        if (!grouped[columnId]) grouped[columnId] = [];
-        grouped[columnId].push(l);
+      const counts: Record<string, number> = {};
+      const pages: Record<string, number> = {};
+      results.forEach(({ columnId, rows, count }) => {
+        grouped[columnId] = rows;
+        counts[columnId] = count;
+        pages[columnId] = 1;
       });
+
       setColumnsData(grouped);
+      setColumnCounts(counts);
+      setColumnPages(pages);
     } catch {
       // Falha ao carregar leads — mantém o estado atual
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadMore = async (columnId: string) => {
+    const column = COLUMNS.find((item) => item.id === columnId);
+    if (!column || loadingMoreColumn) return;
+
+    const nextPage = (columnPages[columnId] || 1) + 1;
+    const from = (nextPage - 1) * COLUMN_PAGE_SIZE;
+
+    try {
+      setLoadingMoreColumn(columnId);
+      const { data, count, error } = await supabase
+        .from('leads_estetica')
+        .select(CRM_LEAD_FIELDS, { count: 'exact' })
+        .in('status', [...column.statuses])
+        .order('inicio_atendimento', { ascending: false, nullsFirst: false })
+        .range(from, from + COLUMN_PAGE_SIZE - 1);
+
+      if (error) throw error;
+      setColumnsData((current) => ({
+        ...current,
+        [columnId]: [...(current[columnId] || []), ...(data || [])],
+      }));
+      setColumnCounts((current) => ({ ...current, [columnId]: count || 0 }));
+      setColumnPages((current) => ({ ...current, [columnId]: nextPage }));
+    } catch {
+      alert('Não foi possível carregar mais registros.');
+    } finally {
+      setLoadingMoreColumn(null);
     }
   };
 
@@ -110,6 +139,11 @@ export function CRM() {
       [sourceColId]: sourceClone,
       [destColId]: destClone
     });
+    setColumnCounts((current) => ({
+      ...current,
+      [sourceColId]: Math.max(0, (current[sourceColId] || 0) - 1),
+      [destColId]: (current[destColId] || 0) + 1,
+    }));
 
     try {
       const updateData: any = { status: destColId };
@@ -156,7 +190,7 @@ export function CRM() {
                       <h3 className="font-bold text-[11px] uppercase tracking-wider drop-shadow-sm">{col.title}</h3>
                     </div>
                     <span className="text-xs bg-white text-[#3D3935] px-2 py-0.5 rounded-full font-bold shadow-sm ring-1 ring-black/5">
-                      {cards.length}
+                      {columnCounts[col.id] ?? cards.length}
                     </span>
                   </div>
                   
@@ -179,6 +213,16 @@ export function CRM() {
                           />
                         ))}
                         {provided.placeholder}
+                        {cards.length < (columnCounts[col.id] || 0) && (
+                          <button
+                            type="button"
+                            onClick={() => loadMore(col.id)}
+                            disabled={loadingMoreColumn !== null}
+                            className="w-full py-2 text-xs font-semibold text-primary hover:bg-primary/5 rounded-lg disabled:opacity-50"
+                          >
+                            {loadingMoreColumn === col.id ? 'Carregando...' : 'Carregar mais'}
+                          </button>
+                        )}
                       </div>
                     )}
                   </Droppable>
@@ -442,7 +486,7 @@ function DrawerLead({ isOpen, onClose, lead, onRefresh, navigate }: any) {
     if (!lead?.id) return;
     const { data } = await supabase
       .from('lead_notes')
-      .select('*')
+      .select('id, author_name, created_at, content')
       .eq('lead_id', lead.id)
       .order('created_at', { ascending: false });
     setNotes(data || []);
