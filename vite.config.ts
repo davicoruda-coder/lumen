@@ -18,7 +18,7 @@ export default defineConfig({
         name: 'Lumen',
         short_name: 'Lumen',
         description: 'Painel de gestão para clínicas de estética e saúde',
-        theme_color: '#C47E7E',
+        theme_color: '#1e3a5f',
         background_color: '#ffffff',
         display: 'standalone',
         icons: [

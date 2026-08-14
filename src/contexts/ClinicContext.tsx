@@ -39,8 +39,8 @@ export function ClinicProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    applyClinicBranding(clinicName);
-  }, [clinicName]);
+    applyClinicBranding(clinicName, clinicLogo);
+  }, [clinicName, clinicLogo]);
 
   return (
     <ClinicContext.Provider value={{ clinicName, clinicLogo, plano, refreshClinic }}>
