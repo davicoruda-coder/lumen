@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { cn } from '../lib/utils';
 import { TabGeral } from '../components/configuracoes/TabGeral';
 import { TabUsuarios } from '../components/configuracoes/TabUsuarios';
-import { TabKanban } from '../components/configuracoes/TabKanban';
 import { TabAgendas } from '../components/configuracoes/TabAgendas';
 import { TabModulos } from '../components/configuracoes/TabModulos';
 import { TabPersonalizacao } from '../components/configuracoes/TabPersonalizacao';
@@ -107,12 +106,6 @@ export function Configuracoes() {
         {activeTab === 'clinica' && (
           <div className="space-y-10">
             {isAdmin && <TabGeral />}
-            {isAdmin && (
-              <>
-                <div className="border-t border-border-card/40" />
-                <TabKanban />
-              </>
-            )}
             {role === 'superadmin' && (
               <>
                 <div className="border-t border-border-card/40" />

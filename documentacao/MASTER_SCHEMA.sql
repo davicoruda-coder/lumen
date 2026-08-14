@@ -101,7 +101,24 @@ BEGIN
 END;
 $function$;
 
--- 2.2 Trigger automático para criar o usuário local ao registrar na auth do Supabase
+-- 2.2 Papel do usuário atual sem recursão nas políticas RLS de public.users
+CREATE OR REPLACE FUNCTION public.current_user_role()
+RETURNS text
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+BEGIN
+  RETURN (
+    SELECT role
+    FROM public.users
+    WHERE id = auth.uid()
+  );
+END;
+$function$;
+
+-- 2.3 Trigger automático para criar o usuário local ao registrar na auth do Supabase
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -657,6 +674,9 @@ FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 -- Revogar permissões públicas expostas em funções críticas
 REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM anon;
 REVOKE EXECUTE ON FUNCTION public.check_is_admin() FROM anon;
+REVOKE EXECUTE ON FUNCTION public.current_user_role() FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.current_user_role() FROM anon;
+GRANT EXECUTE ON FUNCTION public.current_user_role() TO authenticated;
 
 -- =========================================================================
 -- 6. CRIAR BUCKETS DE STORAGE (Supabase Storage)
@@ -753,29 +773,46 @@ ALTER TABLE public.nps_feedbacks ENABLE ROW LEVEL SECURITY;
 
 -- 7.1 Políticas: users & profiles
 DROP POLICY IF EXISTS "Leitura usuarios" ON public.users;
-CREATE POLICY "Leitura usuarios" ON public.users FOR SELECT TO authenticated USING (true);
+-- O perfil editável fica em auth.users.user_metadata. Não permita UPDATE da
+-- própria linha public.users: ela contém o papel de autorização (role).
 DROP POLICY IF EXISTS "Edicao proprio perfil" ON public.users;
-CREATE POLICY "Edicao proprio perfil" ON public.users FOR UPDATE TO authenticated USING ((select auth.uid()) = id);
 
 -- Permite que cada usuário veja APENAS seu próprio registro para garantir o AuthContext
 DROP POLICY IF EXISTS "Leitura usuarios" ON public.users;
 DROP POLICY IF EXISTS "Users can view own record" ON public.users;
-CREATE POLICY "Users can view own record" ON public.users FOR SELECT USING (id = auth.uid());
+CREATE POLICY "Users can view own record" ON public.users
+FOR SELECT TO authenticated
+USING (id = (select auth.uid()));
 
--- Permite que admins e owners vejam todos os usuários
+-- Permite que gestores administrativos vejam a equipe.
 DROP POLICY IF EXISTS "Admins can view all users" ON public.users;
-CREATE POLICY "Admins can view all users" ON public.users FOR SELECT USING (check_is_admin());
+CREATE POLICY "Admins can view all users" ON public.users
+FOR SELECT TO authenticated
+USING (check_is_admin());
 
--- Permite que owner e superadmin alterem o cargo (role) de outros usuários
--- Correção aplicada em Jun/2026: RLS bloqueava silenciosamente o update sem retornar erro
+-- Superadmin gerencia todos os cargos. Owner só gerencia membros abaixo de
+-- owner, não pode editar a própria role nem criar outro owner/superadmin.
 DROP POLICY IF EXISTS "Admins can update user roles" ON public.users;
 CREATE POLICY "Admins can update user roles" ON public.users
-FOR UPDATE
+FOR UPDATE TO authenticated
 USING (
-  (SELECT role FROM public.users WHERE id = auth.uid()) IN ('superadmin', 'owner')
+  current_user_role() = 'superadmin'
+  OR (
+    current_user_role() = 'owner'
+    AND id <> (select auth.uid())
+    AND role NOT IN ('owner', 'superadmin')
+  )
 )
 WITH CHECK (
-  role IN ('especialista', 'owner', 'admin', 'superadmin', 'gestor')
+  (
+    current_user_role() = 'superadmin'
+    AND role IN ('especialista', 'owner', 'admin', 'superadmin', 'gestor', 'user')
+  )
+  OR (
+    current_user_role() = 'owner'
+    AND id <> (select auth.uid())
+    AND role IN ('especialista', 'admin', 'gestor', 'user')
+  )
 );
 
 -- (Políticas de profiles removidas — tabela legada deletada)
