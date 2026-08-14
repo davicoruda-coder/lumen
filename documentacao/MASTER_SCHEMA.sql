@@ -884,63 +884,98 @@ DROP POLICY IF EXISTS "clinic_config_delete_admin_only" ON public.clinic_config;
 CREATE POLICY "clinic_config_delete_admin_only" ON public.clinic_config FOR DELETE TO authenticated USING (check_is_admin());
 
 DROP POLICY IF EXISTS "somente_admin_clinic_hours" ON public.clinic_hours;
-CREATE POLICY "somente_admin_clinic_hours" ON public.clinic_hours FOR ALL TO authenticated USING (check_is_admin());
+CREATE POLICY "somente_admin_clinic_hours" ON public.clinic_hours FOR ALL TO authenticated
+USING (check_is_admin()) WITH CHECK (check_is_admin());
 DROP POLICY IF EXISTS "Leitura clinic_hours para autenticados" ON public.clinic_hours;
-CREATE POLICY "Leitura clinic_hours para autenticados" ON public.clinic_hours FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS "Admin gerencia closures" ON public.clinic_closures;
-CREATE POLICY "Admin gerencia closures" ON public.clinic_closures FOR ALL TO authenticated USING (check_is_admin());
+CREATE POLICY "Admin gerencia closures" ON public.clinic_closures FOR ALL TO authenticated
+USING (check_is_admin()) WITH CHECK (check_is_admin());
 DROP POLICY IF EXISTS "Leitura closures autenticados" ON public.clinic_closures;
-CREATE POLICY "Leitura closures autenticados" ON public.clinic_closures FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Leitura closures equipe clinica" ON public.clinic_closures;
+CREATE POLICY "Leitura closures equipe clinica" ON public.clinic_closures FOR SELECT TO authenticated
+USING (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
 
 -- 7.3 Políticas: agendas & agenda_hours & agendamentos_estetica
 DROP POLICY IF EXISTS "autenticado_insert" ON public.agendas;
-CREATE POLICY "autenticado_insert" ON public.agendas FOR INSERT TO authenticated WITH CHECK (true);
 DROP POLICY IF EXISTS "autenticado_select" ON public.agendas;
-CREATE POLICY "autenticado_select" ON public.agendas FOR SELECT TO authenticated USING (true);
 DROP POLICY IF EXISTS "autenticado_update" ON public.agendas;
-CREATE POLICY "autenticado_update" ON public.agendas FOR UPDATE TO authenticated USING (true);
 DROP POLICY IF EXISTS "somente_admin_delete_agendas" ON public.agendas;
-CREATE POLICY "somente_admin_delete_agendas" ON public.agendas FOR DELETE TO authenticated USING (check_is_admin());
+DROP POLICY IF EXISTS "Equipe clinica le agendas" ON public.agendas;
+DROP POLICY IF EXISTS "Admins gerenciam agendas" ON public.agendas;
+CREATE POLICY "Equipe clinica le agendas" ON public.agendas FOR SELECT TO authenticated
+USING (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
+CREATE POLICY "Admins gerenciam agendas" ON public.agendas FOR ALL TO authenticated
+USING (check_is_admin()) WITH CHECK (check_is_admin());
 
 DROP POLICY IF EXISTS "autenticado_insert" ON public.agenda_hours;
-CREATE POLICY "autenticado_insert" ON public.agenda_hours FOR INSERT TO authenticated WITH CHECK (true);
 DROP POLICY IF EXISTS "autenticado_select" ON public.agenda_hours;
-CREATE POLICY "autenticado_select" ON public.agenda_hours FOR SELECT TO authenticated USING (true);
 DROP POLICY IF EXISTS "autenticado_update" ON public.agenda_hours;
-CREATE POLICY "autenticado_update" ON public.agenda_hours FOR UPDATE TO authenticated USING (true);
 DROP POLICY IF EXISTS "service_role_select_agenda_hours" ON public.agenda_hours;
 CREATE POLICY "service_role_select_agenda_hours" ON public.agenda_hours FOR SELECT TO service_role USING (true);
 DROP POLICY IF EXISTS "somente_admin_delete_agenda_hours" ON public.agenda_hours;
-CREATE POLICY "somente_admin_delete_agenda_hours" ON public.agenda_hours FOR DELETE TO authenticated USING (check_is_admin());
+DROP POLICY IF EXISTS "Equipe clinica le horarios" ON public.agenda_hours;
+DROP POLICY IF EXISTS "Admins gerenciam horarios" ON public.agenda_hours;
+CREATE POLICY "Equipe clinica le horarios" ON public.agenda_hours FOR SELECT TO authenticated
+USING (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
+CREATE POLICY "Admins gerenciam horarios" ON public.agenda_hours FOR ALL TO authenticated
+USING (check_is_admin()) WITH CHECK (check_is_admin());
 
 DROP POLICY IF EXISTS "autenticado_insert" ON public.agendamentos_estetica;
-CREATE POLICY "autenticado_insert" ON public.agendamentos_estetica FOR INSERT TO authenticated WITH CHECK (true);
 DROP POLICY IF EXISTS "autenticado_select" ON public.agendamentos_estetica;
-CREATE POLICY "autenticado_select" ON public.agendamentos_estetica FOR SELECT TO authenticated USING (true);
 DROP POLICY IF EXISTS "autenticado_update" ON public.agendamentos_estetica;
-CREATE POLICY "autenticado_update" ON public.agendamentos_estetica FOR UPDATE TO authenticated USING (true);
 DROP POLICY IF EXISTS "somente_admin_delete_agendamentos" ON public.agendamentos_estetica;
-CREATE POLICY "somente_admin_delete_agendamentos" ON public.agendamentos_estetica FOR DELETE TO authenticated USING (check_is_admin());
+DROP POLICY IF EXISTS "Equipe clinica le agendamentos" ON public.agendamentos_estetica;
+DROP POLICY IF EXISTS "Admins gerenciam agendamentos" ON public.agendamentos_estetica;
+CREATE POLICY "Equipe clinica le agendamentos" ON public.agendamentos_estetica FOR SELECT TO authenticated
+USING (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
+CREATE POLICY "Admins gerenciam agendamentos" ON public.agendamentos_estetica FOR ALL TO authenticated
+USING (check_is_admin()) WITH CHECK (check_is_admin());
 
 -- 7.4 Políticas: leads_estetica & lead_notes
 DROP POLICY IF EXISTS "autenticado_insert" ON public.leads_estetica;
-CREATE POLICY "autenticado_insert" ON public.leads_estetica FOR INSERT TO authenticated WITH CHECK (true);
 DROP POLICY IF EXISTS "autenticado_select" ON public.leads_estetica;
-CREATE POLICY "autenticado_select" ON public.leads_estetica FOR SELECT TO authenticated USING (true);
 DROP POLICY IF EXISTS "autenticado_update" ON public.leads_estetica;
-CREATE POLICY "autenticado_update" ON public.leads_estetica FOR UPDATE TO authenticated USING (true);
 DROP POLICY IF EXISTS "somente_admin_delete_leads" ON public.leads_estetica;
-CREATE POLICY "somente_admin_delete_leads" ON public.leads_estetica FOR DELETE TO authenticated USING (check_is_admin());
+DROP POLICY IF EXISTS "Equipe clinica le leads" ON public.leads_estetica;
+DROP POLICY IF EXISTS "Admins gerenciam leads" ON public.leads_estetica;
+CREATE POLICY "Equipe clinica le leads" ON public.leads_estetica FOR SELECT TO authenticated
+USING (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
+CREATE POLICY "Admins gerenciam leads" ON public.leads_estetica FOR ALL TO authenticated
+USING (check_is_admin()) WITH CHECK (check_is_admin());
 
 DROP POLICY IF EXISTS "Permitir inserção para usuários autenticados" ON public.lead_notes;
-CREATE POLICY "Permitir inserção para usuários autenticados" ON public.lead_notes FOR INSERT TO public WITH CHECK (auth.role() = 'authenticated'::text);
 DROP POLICY IF EXISTS "Permitir leitura para usuários autenticados" ON public.lead_notes;
-CREATE POLICY "Permitir leitura para usuários autenticados" ON public.lead_notes FOR SELECT TO public USING (auth.role() = 'authenticated'::text);
 DROP POLICY IF EXISTS "Apenas criador edita anotações" ON public.lead_notes;
-CREATE POLICY "Apenas criador edita anotações" ON public.lead_notes FOR UPDATE TO authenticated USING ((select auth.uid()) = user_id);
 DROP POLICY IF EXISTS "Apenas criador ou admin deleta anotações" ON public.lead_notes;
-CREATE POLICY "Apenas criador ou admin deleta anotações" ON public.lead_notes FOR DELETE TO authenticated USING (((select auth.uid()) = user_id) OR check_is_admin());
+DROP POLICY IF EXISTS "Equipe clinica le notas" ON public.lead_notes;
+DROP POLICY IF EXISTS "Equipe clinica cria notas" ON public.lead_notes;
+DROP POLICY IF EXISTS "Criador edita nota" ON public.lead_notes;
+DROP POLICY IF EXISTS "Criador ou admin exclui nota" ON public.lead_notes;
+CREATE POLICY "Equipe clinica le notas" ON public.lead_notes FOR SELECT TO authenticated
+USING (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
+CREATE POLICY "Equipe clinica cria notas" ON public.lead_notes FOR INSERT TO authenticated
+WITH CHECK (
+  current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista')
+  AND user_id = (select auth.uid())
+);
+CREATE POLICY "Criador edita nota" ON public.lead_notes FOR UPDATE TO authenticated
+USING (
+  current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista')
+  AND (select auth.uid()) = user_id
+)
+WITH CHECK (
+  current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista')
+  AND (select auth.uid()) = user_id
+);
+CREATE POLICY "Criador ou admin exclui nota" ON public.lead_notes FOR DELETE TO authenticated
+USING (
+  check_is_admin()
+  OR (
+    current_user_role() = 'especialista'
+    AND (select auth.uid()) = user_id
+  )
+);
 
 -- 7.6 Políticas: modulos_clinica
 DROP POLICY IF EXISTS "Leitura modulos para todos" ON public.modulos_clinica;

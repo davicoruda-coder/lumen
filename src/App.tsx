@@ -68,7 +68,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
 
 /** Blocks unauthenticated users from accessing protected pages */
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, role, loading } = useAuth();
+  const { user, role, loading, signOut } = useAuth();
 
   if (loading || (user && role === null)) {
     return (
@@ -81,6 +81,26 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (role === 'user') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-bg-base p-6">
+        <div className="w-full max-w-md rounded-2xl border border-border-card bg-bg-card p-8 text-center">
+          <h1 className="text-xl font-heading font-bold text-text-main">Acesso aguardando liberação</h1>
+          <p className="mt-3 text-sm text-text-muted">
+            Sua conta foi criada, mas ainda não recebeu um cargo na equipe. Peça ao administrador da clínica para concluir seu cadastro.
+          </p>
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            className="mt-6 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-[color:var(--primary-foreground)]"
+          >
+            Sair
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return <>{children}</>;
