@@ -2,6 +2,17 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
 type Theme = 'light' | 'dark';
+export type ThemeMode = Theme | 'auto';
+
+const getAutomaticTheme = (): Theme => {
+  const brazilHour = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    hour: '2-digit',
+    hourCycle: 'h23',
+  }).format(new Date());
+  const hour = Number.parseInt(brazilHour, 10);
+  return hour >= 6 && hour < 18 ? 'light' : 'dark';
+};
 
 export type ColorPreset = {
   id: string;
@@ -63,6 +74,8 @@ export const COLOR_PRESETS: ColorPreset[] = [
 
 interface ThemeContextType {
   theme: Theme;
+  themeMode: ThemeMode;
+  setThemeMode: (mode: ThemeMode) => void;
   toggleTheme: () => void;
   primaryColor: string;
   setPrimaryColor: (colorId: string) => void;
@@ -71,15 +84,31 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(() => {
+  const [themeMode, setThemeModeState] = useState<ThemeMode>(() => {
     const saved = localStorage.getItem('theme');
-    if (saved === 'dark' || saved === 'light') return saved;
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    if (saved === 'dark' || saved === 'light' || saved === 'auto') return saved;
+    return 'auto';
   });
+  const [automaticTheme, setAutomaticTheme] = useState<Theme>(getAutomaticTheme);
+  const theme: Theme = themeMode === 'auto' ? automaticTheme : themeMode;
 
   const [primaryColor, setPrimaryColor] = useState<string>(() => {
     return localStorage.getItem('primaryColor') || 'rose-gold';
   });
+
+  useEffect(() => {
+    if (themeMode !== 'auto') return;
+
+    const updateAutomaticTheme = () => setAutomaticTheme(getAutomaticTheme());
+    updateAutomaticTheme();
+    const intervalId = window.setInterval(updateAutomaticTheme, 60_000);
+    document.addEventListener('visibilitychange', updateAutomaticTheme);
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', updateAutomaticTheme);
+    };
+  }, [themeMode]);
 
   // Fetch global theme from clinic_config (DB always wins over localStorage)
   useEffect(() => {
@@ -114,7 +143,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('theme', theme);
+    localStorage.setItem('theme', themeMode);
     const root = window.document.documentElement;
     
     // Apply dark mode class
@@ -146,10 +175,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       root.style.setProperty('--primary-foreground', preset.primaryForeground);
       root.style.setProperty('--bg-sidebar', preset.sidebarBg);
     }
-  }, [theme, primaryColor]);
+  }, [theme, themeMode, primaryColor]);
 
   const toggleTheme = () => {
-    setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
+    setThemeModeState(theme === 'light' ? 'dark' : 'light');
+  };
+
+  const setThemeMode = (mode: ThemeMode) => {
+    setThemeModeState(mode);
   };
 
   const handleSetPrimaryColor = async (colorId: string) => {
@@ -163,7 +196,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, primaryColor, setPrimaryColor: handleSetPrimaryColor }}>
+    <ThemeContext.Provider value={{ theme, themeMode, setThemeMode, toggleTheme, primaryColor, setPrimaryColor: handleSetPrimaryColor }}>
       {children}
     </ThemeContext.Provider>
   );

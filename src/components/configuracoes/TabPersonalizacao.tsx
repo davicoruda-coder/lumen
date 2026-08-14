@@ -1,11 +1,11 @@
 import React from 'react';
 import { useTheme, COLOR_PRESETS } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { Check, Moon, Sun, Palette } from 'lucide-react';
+import { Check, Clock3, Moon, Sun, Palette } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export function TabPersonalizacao() {
-  const { theme, toggleTheme, primaryColor, setPrimaryColor } = useTheme();
+  const { theme, themeMode, setThemeMode, primaryColor, setPrimaryColor } = useTheme();
   const { role } = useAuth();
   
   const canChangeColor = role === 'superadmin' || role === 'owner' || role === 'admin';
@@ -19,15 +19,15 @@ export function TabPersonalizacao() {
           Aparência
         </h3>
         <p className="text-sm text-text-muted mb-6">
-          Escolha entre o modo claro ou escuro para a interface do sistema.
+          Escolha o tema da interface ou deixe o sistema acompanhar o horário local.
         </p>
 
-        <div className="grid grid-cols-2 gap-4 max-w-md">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl">
           <button
-            onClick={() => theme !== 'light' && toggleTheme()}
+            onClick={() => setThemeMode('light')}
             className={cn(
               "flex flex-col items-center justify-center gap-3 p-4 rounded-xl border-2 transition-all",
-              theme === 'light' 
+              themeMode === 'light' 
                 ? "border-primary bg-primary/5 text-primary" 
                 : "border-border-card bg-bg-base text-text-muted hover:border-text-muted"
             )}
@@ -37,10 +37,10 @@ export function TabPersonalizacao() {
           </button>
 
           <button
-            onClick={() => theme !== 'dark' && toggleTheme()}
+            onClick={() => setThemeMode('dark')}
             className={cn(
               "flex flex-col items-center justify-center gap-3 p-4 rounded-xl border-2 transition-all",
-              theme === 'dark' 
+              themeMode === 'dark' 
                 ? "border-primary bg-primary/5 text-primary" 
                 : "border-border-card bg-bg-base text-text-muted hover:border-text-muted"
             )}
@@ -48,7 +48,23 @@ export function TabPersonalizacao() {
             <Moon className="w-8 h-8" />
             <span className="font-semibold">Escuro</span>
           </button>
+
+          <button
+            onClick={() => setThemeMode('auto')}
+            className={cn(
+              "flex flex-col items-center justify-center gap-3 p-4 rounded-xl border-2 transition-all",
+              themeMode === 'auto'
+                ? "border-primary bg-primary/5 text-primary"
+                : "border-border-card bg-bg-base text-text-muted hover:border-text-muted"
+            )}
+          >
+            <Clock3 className="w-8 h-8" />
+            <span className="font-semibold">Automático</span>
+          </button>
         </div>
+        <p className="text-xs text-text-muted mt-4">
+          Automático: claro das 6h às 18h e escuro à noite, conforme o horário do dispositivo.
+        </p>
       </section>
 
       {/* Primary Color Selection - Only for admins/owners */}
