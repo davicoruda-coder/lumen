@@ -130,31 +130,31 @@ export function Login() {
             </Button>
           </form>
 
-          <div className="mt-8 rounded-2xl border border-border-card/60 bg-bg-card px-5 py-4 text-center">
+          <div className="mt-8 mx-auto w-full max-w-[17.5rem] rounded-2xl border border-border-card/60 bg-bg-card px-4 py-3.5 text-center">
             <p className="text-sm font-medium text-text-main">
               Quer testar o sistema?
             </p>
-            <p className="mt-2 mx-auto max-w-[16rem] text-xs text-text-muted leading-relaxed text-balance">
+            <p className="mt-1.5 text-xs text-text-muted leading-relaxed text-balance">
               Solicite acesso ao administrador.
               <br />
               O convite chega no seu e-mail.
             </p>
-            <div className="mt-4 flex flex-col sm:flex-row gap-2 justify-center">
+            <div className="mt-3 flex gap-2 justify-center">
               <a
                 href={demoWhatsAppHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#20ba59] transition-colors"
+                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#25D366] px-3 py-2 text-sm font-semibold text-white hover:bg-[#20ba59] transition-colors"
               >
-                <MessageCircle className="h-4 w-4" />
+                <MessageCircle className="h-4 w-4 shrink-0" />
                 WhatsApp
               </a>
               {demoEmailHref && (
                 <a
                   href={demoEmailHref}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-border-card bg-bg-base px-4 py-2.5 text-sm font-semibold text-text-main hover:border-primary/40 transition-colors"
+                  className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border-card bg-bg-base px-3 py-2 text-sm font-semibold text-text-main hover:border-primary/40 transition-colors"
                 >
-                  <Mail className="h-4 w-4" />
+                  <Mail className="h-4 w-4 shrink-0" />
                   E-mail
                 </a>
               )}
