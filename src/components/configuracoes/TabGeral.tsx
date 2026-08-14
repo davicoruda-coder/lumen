@@ -186,7 +186,7 @@ export function TabGeral() {
                       👤 Limite Base: Até 3 agendas de profissionais inclusas
                     </span>
                     <a 
-                      href={`https://wa.me/${import.meta.env.VITE_SUPPORT_WHATSAPP_NUMBER || '5571985084522'}`} 
+                      href={`https://wa.me/${import.meta.env.VITE_SUPPORT_WHATSAPP_NUMBER || '5571996952190'}`} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="text-[10px] font-black text-primary hover:text-primary-hover uppercase tracking-wider transition-colors inline-flex items-center gap-1 self-start sm:self-auto"

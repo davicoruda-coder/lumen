@@ -15,7 +15,7 @@ export const MANIFEST_FILENAME = 'dados-clinica.json';
 export const PLANO_PADRAO = 'GESTAO';
 export const PLANO_LABEL = 'Plano Integrado Premium';
 export const COMPANY_NAME = 'DavicoSystems';
-export const EXAMPLE_SUPPORT_WHATSAPP = '5571985084522';
+export const EXAMPLE_SUPPORT_WHATSAPP = '5571996952190';
 
 export const REQUIRED_FIELDS_SISTEMA = [
   ['clinicName', 'Nome comercial da clínica'],

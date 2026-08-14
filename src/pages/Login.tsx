@@ -7,7 +7,7 @@ import { Input } from '../components/ui/Input';
 import { useClinic } from '../contexts/ClinicContext';
 
 const SUPPORT_WHATSAPP =
-  import.meta.env.VITE_SUPPORT_WHATSAPP_NUMBER || '5571985084522';
+  import.meta.env.VITE_SUPPORT_WHATSAPP_NUMBER || '5571996952190';
 const SUPPORT_EMAIL =
   import.meta.env.VITE_SUPPORT_EMAIL?.trim() || '';
 

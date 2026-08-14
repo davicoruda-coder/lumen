@@ -229,7 +229,7 @@ export function TabAgendas() {
                   </p>
                   <div className="flex flex-wrap gap-3 mt-4">
                     <a
-                      href={`https://wa.me/${import.meta.env.VITE_SUPPORT_WHATSAPP_NUMBER || '5571985084522'}?text=Ol%C3%A1%2C%20gostaria%20de%20solicitar%20a%20adi%C3%A7%C3%A3o%20de%20uma%20nova%20agenda%20no%20meu%20sistema%20de%20est%C3%A9tica.`}
+                      href={`https://wa.me/${import.meta.env.VITE_SUPPORT_WHATSAPP_NUMBER || '5571996952190'}?text=Ol%C3%A1%2C%20gostaria%20de%20solicitar%20a%20adi%C3%A7%C3%A3o%20de%20uma%20nova%20agenda%20no%20meu%20sistema%20de%20est%C3%A9tica.`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[12px] bg-[#25D366] hover:bg-[#20ba59] text-white font-semibold text-sm transition-all shadow-sm hover:shadow-md hover:scale-[1.02]"

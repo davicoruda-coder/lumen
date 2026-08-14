@@ -96,7 +96,7 @@ export function TabSuporte() {
                   </p>
                   <div className="pt-4 flex flex-wrap items-center gap-4">
                     <a
-                      href={`https://wa.me/${import.meta.env.VITE_SUPPORT_WHATSAPP_NUMBER || '5571985084522'}?text=Ol%C3%A1%2C%20gostaria%20de%20solicitar%20suporte%20para%20o%20Lumen.`}
+                      href={`https://wa.me/${import.meta.env.VITE_SUPPORT_WHATSAPP_NUMBER || '5571996952190'}?text=Ol%C3%A1%2C%20gostaria%20de%20solicitar%20suporte%20para%20o%20Lumen.`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 px-5 py-3 rounded-[12px] bg-[#25D366] hover:bg-[#20ba59] text-white font-semibold text-sm transition-all"
