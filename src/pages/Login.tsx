@@ -135,8 +135,7 @@ export function Login() {
               Quer testar o sistema?
             </p>
             <p className="mt-1 text-xs text-text-muted leading-relaxed">
-              Solicite um acesso ao administrador. Você recebe um convite no e-mail
-              e pode ser bloqueado a qualquer momento.
+              Solicite um acesso ao administrador. Você recebe um convite no e-mail.
             </p>
             <div className="mt-4 flex flex-col sm:flex-row gap-2 justify-center">
               <a
