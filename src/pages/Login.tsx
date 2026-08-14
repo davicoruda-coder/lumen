@@ -8,18 +8,10 @@ import { useClinic } from '../contexts/ClinicContext';
 
 const SUPPORT_WHATSAPP =
   import.meta.env.VITE_SUPPORT_WHATSAPP_NUMBER || '5571996952190';
-const SUPPORT_EMAIL =
-  import.meta.env.VITE_SUPPORT_EMAIL?.trim() || '';
 
 const demoWhatsAppHref = `https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent(
   'Olá! Gostaria de solicitar acesso para testar o Lumen. Meu nome é '
 )}`;
-
-const demoEmailHref = SUPPORT_EMAIL
-  ? `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Solicitar acesso para testar o Lumen')}&body=${encodeURIComponent(
-      'Olá! Gostaria de solicitar acesso para testar o Lumen.\n\nNome:\nE-mail para o convite:\n'
-    )}`
-  : null;
 
 export function Login() {
   const [email, setEmail] = useState('');
@@ -135,29 +127,20 @@ export function Login() {
               Quer testar o sistema?
             </p>
             <p className="mt-1.5 text-xs text-text-muted leading-relaxed text-balance">
-              Solicite acesso ao administrador.
+              Solicite acesso pelo WhatsApp.
               <br />
-              O convite chega no seu e-mail.
+              Depois você recebe o convite por e-mail.
             </p>
-            <div className="mt-3 flex gap-2 justify-center">
+            <div className="mt-3">
               <a
                 href={demoWhatsAppHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#25D366] px-3 py-2 text-sm font-semibold text-white hover:bg-[#20ba59] transition-colors"
+                className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#25D366] px-3 py-2.5 text-sm font-semibold text-white hover:bg-[#20ba59] transition-colors"
               >
                 <MessageCircle className="h-4 w-4 shrink-0" />
-                WhatsApp
+                Solicitar no WhatsApp
               </a>
-              {demoEmailHref && (
-                <a
-                  href={demoEmailHref}
-                  className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border-card bg-bg-base px-3 py-2 text-sm font-semibold text-text-main hover:border-primary/40 transition-colors"
-                >
-                  <Mail className="h-4 w-4 shrink-0" />
-                  E-mail
-                </a>
-              )}
             </div>
           </div>
         </div>
