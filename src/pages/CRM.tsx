@@ -14,19 +14,33 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { HScrollArea } from '../components/ui/HScrollArea';
 
+/** Colunas do funil clínico. Status legados de automação são agrupados aqui. */
 const COLUMNS = [
-  { id: 'inicio_atendimento', title: 'Início Atendimento', dotClass: 'bg-white shadow-sm', headerBg: 'bg-primary border-primary text-[color:var(--primary-foreground)] shadow-inner opacity-90' },
-  { id: 'conversando', title: 'Conversando', dotClass: 'bg-white shadow-sm', headerBg: 'bg-primary border-primary text-[color:var(--primary-foreground)] shadow-inner opacity-95' },
+  { id: 'inicio_atendimento', title: 'Novo contato', dotClass: 'bg-white shadow-sm', headerBg: 'bg-primary border-primary text-[color:var(--primary-foreground)] shadow-inner opacity-90' },
+  { id: 'conversando', title: 'Em contato', dotClass: 'bg-white shadow-sm', headerBg: 'bg-primary border-primary text-[color:var(--primary-foreground)] shadow-inner opacity-95' },
   { id: 'agendado', title: 'Agendado', dotClass: 'bg-white shadow-sm', headerBg: 'bg-primary border-primary text-[color:var(--primary-foreground)] shadow-inner opacity-100' },
-  { id: 'cancelamento', title: 'Consulta Cancelada', dotClass: 'bg-white/50', headerBg: 'bg-error border-error text-white opacity-90' },
   { id: 'compareceu', title: 'Compareceu', dotClass: 'bg-white shadow-sm', headerBg: 'bg-success border-success text-white shadow-inner opacity-90' },
-  { id: 'follow_up_1', title: 'Follow Up 1', dotClass: 'bg-white shadow-sm', headerBg: 'bg-primary border-primary text-[color:var(--primary-foreground)] shadow-inner opacity-80' },
-  { id: 'follow_up_2', title: 'Follow Up 2', dotClass: 'bg-white shadow-sm', headerBg: 'bg-primary border-primary text-[color:var(--primary-foreground)] shadow-inner opacity-85' },
-  { id: 'follow_up_3', title: 'Follow Up 3', dotClass: 'bg-white shadow-sm', headerBg: 'bg-primary border-primary text-[color:var(--primary-foreground)] shadow-inner opacity-90' },
-  { id: 'nao_respondeu_follow_up', title: 'Não Respondeu', dotClass: 'bg-white/50', headerBg: 'bg-bg-base border-border-card text-text-muted opacity-90' },
-  { id: 'cancelou_agendamento', title: 'Cancelou Agendamento', dotClass: 'bg-white/50', headerBg: 'bg-error border-error text-white opacity-80' },
-  { id: 'abandonou_conversa', title: 'Abandonou Conversa', dotClass: 'bg-white/50', headerBg: 'bg-bg-base border-border-card text-text-muted opacity-90' },
-];
+  { id: 'follow_up_1', title: 'Acompanhar', dotClass: 'bg-white shadow-sm', headerBg: 'bg-primary border-primary text-[color:var(--primary-foreground)] shadow-inner opacity-85' },
+  { id: 'nao_respondeu_follow_up', title: 'Sem retorno', dotClass: 'bg-white/50', headerBg: 'bg-bg-base border-border-card text-text-muted opacity-90' },
+  { id: 'cancelamento', title: 'Cancelado', dotClass: 'bg-white/50', headerBg: 'bg-error border-error text-white opacity-90' },
+] as const;
+
+const STATUS_TO_COLUMN: Record<string, string> = {
+  inicio_atendimento: 'inicio_atendimento',
+  conversando: 'conversando',
+  agendado: 'agendado',
+  compareceu: 'compareceu',
+  follow_up_1: 'follow_up_1',
+  follow_up_2: 'follow_up_1',
+  follow_up_3: 'follow_up_1',
+  nao_respondeu_follow_up: 'nao_respondeu_follow_up',
+  abandonou_conversa: 'nao_respondeu_follow_up',
+  cancelamento: 'cancelamento',
+  cancelou_agendamento: 'cancelamento',
+};
+
+const CRM_LEAD_FIELDS =
+  'id, nome_lead, whatsapp_lead, cpf, data_nascimento, procedimento_interesse, motivo_contato, status, data_agendamento, data_primeira_visita, nota_nps, resumo_conversa, ultima_mensagem, inicio_atendimento';
 
 
 export function CRM() {
@@ -49,21 +63,20 @@ export function CRM() {
   const fetchLeads = async () => {
     setLoading(true);
     try {
-      // Exclui clientes do Kanban "Leads" ? O prompt não restringe explícitamente se ex-clientes somem do Kanban,
-      // mas "Compareceu" é uma coluna e o trigger converte em cliente. Mantemos tudo na view Kanban baseada no status.
       const { data } = await supabase
         .from('leads_estetica')
-        .select('*')
-        .order('ultima_mensagem', { ascending: false, nullsFirst: false });
+        .select(CRM_LEAD_FIELDS)
+        .order('inicio_atendimento', { ascending: false, nullsFirst: false });
       
       const lds = data || [];
       setLeads(lds);
 
-      // Group by status
       const grouped: Record<string, any[]> = {};
       COLUMNS.forEach(c => grouped[c.id] = []);
       lds.forEach(l => {
-        if (grouped[l.status]) grouped[l.status].push(l);
+        const columnId = STATUS_TO_COLUMN[l.status] || 'inicio_atendimento';
+        if (!grouped[columnId]) grouped[columnId] = [];
+        grouped[columnId].push(l);
       });
       setColumnsData(grouped);
     } catch {
@@ -123,7 +136,7 @@ export function CRM() {
   return (
     <div className="h-[calc(100vh-110px)] lg:h-[calc(100vh-115px)] flex flex-col gap-4 animate-in fade-in duration-300">
       <div className="flex justify-between items-center pb-4">
-        <h1 className="text-2xl font-heading font-bold text-text-main">CRM — Funil de Atendimento</h1>
+        <h1 className="text-2xl font-heading font-bold text-text-main">CRM — Pipeline da clínica</h1>
         <Button variant="primary" onClick={() => setNewLeadModalOpen(true)}>
           <Plus className="w-4 h-4 mr-2" />
           Novo lead
@@ -197,20 +210,23 @@ export function CRM() {
 // KANBAN CARD
 // -------------------------------------------------------------
 function KanbanCard({ lead, index, onClick }: { lead: any, index: number, onClick: () => void }) {
-  const tempoStr = lead.ultima_mensagem 
-    ? formatDistanceToNow(parseISO(lead.ultima_mensagem), { locale: ptBR, addSuffix: true })
-    : 'Sem mensagem';
+  const referenceDate = lead.ultima_mensagem || lead.inicio_atendimento;
+  const tempoStr = referenceDate
+    ? formatDistanceToNow(parseISO(referenceDate), { locale: ptBR, addSuffix: true })
+    : 'Sem data';
 
   const statusColors: Record<string, string> = {
     'inicio_atendimento': 'border-l-primary',
     'conversando': 'border-l-primary',
     'agendado': 'border-l-warning',
     'cancelamento': 'border-l-error',
+    'cancelou_agendamento': 'border-l-error',
     'compareceu': 'border-l-success',
     'follow_up_1': 'border-l-neutral-taupe',
     'follow_up_2': 'border-l-neutral-taupe',
     'follow_up_3': 'border-l-neutral-taupe',
-    'nao_respondeu_follow_up': 'border-l-neutral-taupe'
+    'nao_respondeu_follow_up': 'border-l-neutral-taupe',
+    'abandonou_conversa': 'border-l-neutral-taupe',
   };
   const accentClass = statusColors[lead.status] || 'border-l-transparent';
 
@@ -472,7 +488,7 @@ function DrawerLead({ isOpen, onClose, lead, onRefresh, navigate }: any) {
             <div className="flex flex-col items-start">
               <h2 className="text-xl font-heading font-semibold text-text-main mb-1">Detalhes do Lead</h2>
               <div className="flex items-center gap-2">
-                <Badge variant={lead.status as any}>{lead.status.replace(/_/g, ' ')}</Badge>
+                <Badge variant={lead.status as any} />
                 {lead.status === 'agendado' && lead.data_agendamento && (
                   <span className="text-xs font-medium text-primary bg-primary-light px-2 py-0.5 rounded">
                     {new Date(lead.data_agendamento).toLocaleDateString('pt-BR')} às {new Date(lead.data_agendamento).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
@@ -524,8 +540,10 @@ function DrawerLead({ isOpen, onClose, lead, onRefresh, navigate }: any) {
                   {displayCPF(lead.cpf, role)}
                 </div>
                 <div className="bg-bg-base p-3 rounded-lg border border-border-card">
-                  <span className="block text-xs text-text-muted mb-1">Última msg</span>
-                  {lead.ultima_mensagem ? new Date(lead.ultima_mensagem).toLocaleDateString() : '-'}
+                  <span className="block text-xs text-text-muted mb-1">Última atualização</span>
+                  {(lead.ultima_mensagem || lead.inicio_atendimento)
+                    ? new Date(lead.ultima_mensagem || lead.inicio_atendimento).toLocaleDateString('pt-BR')
+                    : '-'}
                 </div>
                 <div className="bg-bg-base p-3 rounded-lg border border-border-card">
                   <span className="block text-xs text-text-muted mb-1">Início</span>

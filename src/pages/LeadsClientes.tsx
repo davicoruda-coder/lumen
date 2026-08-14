@@ -337,7 +337,7 @@ export function LeadsClientes() {
                     <th className="px-8 py-5 font-medium text-left">Idade</th>
                     <th className="px-8 py-5 font-medium text-left">Procedimento</th>
                     <th className="px-8 py-5 font-medium text-left">Status</th>
-                    <th className="px-8 py-5 font-medium text-left">Última Mensagem</th>
+                    <th className="px-8 py-5 font-medium text-left">Última atualização</th>
                     <th className="px-8 py-5 font-medium text-left">Iniciou em</th>
                   </>
                 ) : (
@@ -395,9 +395,7 @@ export function LeadsClientes() {
                         <td className="px-8 py-5 text-left">{row.procedimento_interesse || '-'}</td>
                         <td className="px-8 py-5 text-left">
                           <div className="flex flex-col gap-1.5 items-start">
-                            <Badge variant={row.status as any}>
-                              {row.status.replace(/_/g, ' ')}
-                            </Badge>
+                            <Badge variant={row.status as any} />
 
                             {row.status === 'agendado' && row.data_agendamento && (
                               <div className="flex items-center gap-1.5 text-xs font-bold text-warning-700 dark:text-warning-400 bg-warning/10 px-2 py-1 rounded-[14px] mt-2 border border-warning/20">
@@ -407,7 +405,7 @@ export function LeadsClientes() {
                             )}
                           </div>
                         </td>
-                        <td className="px-8 py-5 text-text-muted text-left">{row.ultima_mensagem ? formatDistanceToNow(parseISO(row.ultima_mensagem), { locale: ptBR, addSuffix: true }) : '-'}</td>
+                        <td className="px-8 py-5 text-text-muted text-left">{row.ultima_mensagem || row.inicio_atendimento ? formatDistanceToNow(parseISO(row.ultima_mensagem || row.inicio_atendimento), { locale: ptBR, addSuffix: true }) : '-'}</td>
                         <td className="px-8 py-5 text-text-muted text-left">{row.inicio_atendimento ? format(parseISO(row.inicio_atendimento), 'dd/MM/yy HH:mm') : '-'}</td>
                       </>
                     ) : (
@@ -607,8 +605,10 @@ function DrawerDetail({ isOpen, onClose, type, data, navigate, onRefresh }: any)
                   {formatBirthDate(lead.data_nascimento)}
                 </div>
                 <div className="bg-bg-base p-3 rounded-lg border border-border-card">
-                  <span className="block text-xs text-text-muted mb-1">Última msg</span>
-                  {lead.ultima_mensagem ? new Date(lead.ultima_mensagem).toLocaleDateString() : '-'}
+                  <span className="block text-xs text-text-muted mb-1">Última atualização</span>
+                  {lead.ultima_mensagem || lead.inicio_atendimento
+                    ? new Date(lead.ultima_mensagem || lead.inicio_atendimento).toLocaleDateString('pt-BR')
+                    : '-'}
                 </div>
                 <div className="bg-bg-base p-3 rounded-lg border border-border-card col-span-2">
                   <span className="block text-xs text-text-muted mb-1">Valor Total Inv.</span>
