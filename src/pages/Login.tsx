@@ -130,12 +130,14 @@ export function Login() {
             </Button>
           </form>
 
-          <div className="mt-8 rounded-2xl border border-border-card/60 bg-bg-card p-4 text-center">
+          <div className="mt-8 rounded-2xl border border-border-card/60 bg-bg-card px-5 py-4 text-center">
             <p className="text-sm font-medium text-text-main">
               Quer testar o sistema?
             </p>
-            <p className="mt-1 text-xs text-text-muted leading-relaxed">
-              Solicite um acesso ao administrador. Você recebe um convite no e-mail.
+            <p className="mt-2 mx-auto max-w-[16rem] text-xs text-text-muted leading-relaxed text-balance">
+              Solicite acesso ao administrador.
+              <br />
+              O convite chega no seu e-mail.
             </p>
             <div className="mt-4 flex flex-col sm:flex-row gap-2 justify-center">
               <a
