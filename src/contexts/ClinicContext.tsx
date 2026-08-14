@@ -1,11 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import {
-  applyClinicBranding,
-  DEFAULT_CLINIC_NAME,
-  resolveClinicDisplayLogo,
-  resolveClinicDisplayName,
-} from '../lib/clinicBranding';
+import { applyClinicBranding, DEFAULT_CLINIC_NAME } from '../lib/clinicBranding';
 
 interface ClinicContextType {
   clinicName: string;
@@ -30,8 +25,8 @@ export function ClinicProvider({ children }: { children: React.ReactNode }) {
 
       if (!error && data && data.length > 0) {
         const config = data[0];
-        setClinicName(resolveClinicDisplayName(config.nome));
-        setClinicLogo(resolveClinicDisplayLogo(config.nome, config.logo_url));
+        setClinicName(config.nome?.trim() || DEFAULT_CLINIC_NAME);
+        setClinicLogo(config.logo_url?.trim() || null);
         if (config.plano) setPlano(config.plano);
       } else {
         setClinicName(DEFAULT_CLINIC_NAME);

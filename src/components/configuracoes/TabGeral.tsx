@@ -152,10 +152,6 @@ export function TabGeral() {
               onChange={e => setNome(e.target.value)} 
               placeholder="Ex: Clínica Bela Forma" 
             />
-            <p className="mt-2 text-xs text-text-muted">
-              Enquanto o nome não for personalizado, o login mostra “Minha Clínica” sem logo.
-              A aba do navegador continua como Lumen.
-            </p>
           </div>
 
           <div>

@@ -191,8 +191,9 @@ export function TabUsuarios() {
         <div>
           <CardTitle>Usuários do Sistema</CardTitle>
           <p className="mt-1 text-sm text-text-muted">
-            Lista quem tem acesso, o e-mail e desde quando. Use “Convidar” para liberar um teste
-            e “Remover” para bloquear.
+            Lista quem tem acesso, o e-mail e desde quando. Convide como <strong>Gestor</strong> para
+            liberar o teste com as funcionalidades; só você (superadmin) gerencia a equipe.
+            Use “Remover” para bloquear.
           </p>
         </div>
         <Button onClick={() => setIsModalOpen(true)} size="sm" className="shrink-0">
