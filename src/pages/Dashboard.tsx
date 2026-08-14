@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   startOfDay, endOfDay, subDays, startOfMonth, endOfMonth, 
-  startOfYear, endOfYear, subWeeks, format, parseISO, isWithinInterval
+  startOfYear, endOfYear, subWeeks, format, parseISO
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '../lib/supabase';
@@ -96,10 +96,12 @@ export function Dashboard() {
   }, [dateRange, horarios]);
 
   const fetchHorarios = async () => {
-    const { data } = await supabase.from('clinic_hours').select('*');
+    const { data } = await supabase
+      .from('clinic_hours')
+      .select('dia, aberto, hora_inicio, hora_fim');
     if (data) {
       setHorarios(data);
-      setHorariosLabel('⚙️ Horário considerado: Todos os dias configurados no menu Ajustes.');
+      setHorariosLabel('Horário considerado: configuração da clínica em Configurações → Clínica.');
     }
   };
 
@@ -144,19 +146,20 @@ export function Dashboard() {
     setLoading(true);
     const startStr = dateRange.start.toISOString();
     const endStr = dateRange.end.toISOString();
-    const nowStr = new Date().toISOString();
+    const now = new Date();
+    const nowStr = now.toISOString();
+    const pendentesDesde = startOfDay(subDays(now, 60)).toISOString();
 
     try {
-      // Executa as consultas ao banco de dados em paralelo para máxima velocidade
-      const [agendamentosRes, leadsRes, proxRes, pendentesRes] = await Promise.all([
+      const [agendamentosRes, leadsRes, proxRes, pendentesRes, npsRes] = await Promise.all([
         supabase
           .from('agendamentos_estetica')
-          .select('*')
+          .select('id', { count: 'exact', head: true })
           .gte('data_hora_inicio', startStr)
           .lte('data_hora_inicio', endStr),
         supabase
           .from('leads_estetica')
-          .select('*')
+          .select('status, inicio_atendimento')
           .gte('inicio_atendimento', startStr)
           .lte('inicio_atendimento', endStr),
         supabase
@@ -174,29 +177,32 @@ export function Dashboard() {
             id, procedimento_nome, nome_lead, data_hora_inicio, status, lead_id, whatsapp_lead,
             agendas(nome, cor)
           `)
+          .gte('data_hora_inicio', pendentesDesde)
           .lte('data_hora_inicio', nowStr)
           .in('status', ['agendado', 'confirmado'])
           .order('data_hora_inicio', { ascending: false })
+          .limit(30),
+        supabase
+          .from('nps_feedbacks')
+          .select('id, cliente_nome, nota, procedimento, comentario, whatsapp_lead, criado_em')
+          .gte('criado_em', startStr)
+          .lte('criado_em', endStr)
+          .order('criado_em', { ascending: false })
+          .limit(500),
       ]);
 
-      const ags = agendamentosRes.data || [];
-      setAgendamentosTotal(ags.length);
+      setAgendamentosTotal(agendamentosRes.count || 0);
 
       const lds = leadsRes.data || [];
       setNovosLeads(lds.length);
+      setProximosAgendamentos(proxRes.data || []);
+      setPendentesConfirmacao(pendentesRes.data || []);
+      setNpsFeedbacks(npsRes.data || []);
 
-      const prox = proxRes.data || [];
-      setProximosAgendamentos(prox);
-
-      const pend = pendentesRes.data || [];
-      setPendentesConfirmacao(pend);
-
-      // Cálculo de Conversão Cohort Preciso
       const leadsConvertidos = lds.filter((l: any) => l.status === 'agendado' || l.status === 'compareceu').length;
       const taxa = lds.length > 0 ? (leadsConvertidos / lds.length) * 100 : 0;
       setTaxaConversao(taxa);
 
-      // LineChart Data: Leads grouped by day
       const lineDataMap = lds.reduce((acc: any, curr: any) => {
         const d = format(parseISO(curr.inicio_atendimento), 'dd/MM', { locale: ptBR });
         acc[d] = (acc[d] || 0) + 1;
@@ -204,7 +210,6 @@ export function Dashboard() {
       }, {});
       setLineChartData(Object.entries(lineDataMap).map(([date, count]) => ({ date, count })));
 
-      // BarChart 2: Dias com mais movimento
       const daysMap = { 'Seg': 0, 'Ter': 0, 'Qua': 0, 'Qui': 0, 'Sex': 0, 'Sáb': 0, 'Dom': 0 };
       const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
       lds.forEach((l: any) => {
@@ -213,13 +218,12 @@ export function Dashboard() {
       });
       setBarChartWeekData(dayNames.map(d => ({ day: d, count: daysMap[d as keyof typeof daysMap] })));
 
-      // PieChart 3: Horário dos contatos
       let dentro = 0, fora = 0;
       const hoursMap = horarios.reduce((acc, curr) => {
         const mapDay = { 'domingo': 0, 'segunda': 1, 'terca': 2, 'quarta': 3, 'quinta': 4, 'sexta': 5, 'sabado': 6 };
         acc[mapDay[curr.dia as keyof typeof mapDay]] = curr;
         return acc;
-      }, {});
+      }, {} as Record<number, any>);
 
       lds.forEach((l: any) => {
         const dt = parseISO(l.inicio_atendimento);
@@ -240,10 +244,6 @@ export function Dashboard() {
         { name: 'Fora do horário', value: fora, fill: 'var(--warning)' }
       ]);
       setLeadsForaHorario(fora);
-
-      // Buscar Dados NPS
-      await fetchNpsData();
-
     } catch {
       // Falha ao carregar o dashboard — mantém o estado atual
     } finally {
@@ -255,13 +255,15 @@ export function Dashboard() {
     try {
       const { data, error } = await supabase
         .from('nps_feedbacks')
-        .select('*')
-        .order('criado_em', { ascending: false });
+        .select('id, cliente_nome, nota, procedimento, comentario, whatsapp_lead, criado_em')
+        .gte('criado_em', dateRange.start.toISOString())
+        .lte('criado_em', dateRange.end.toISOString())
+        .order('criado_em', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
       setNpsFeedbacks(data || []);
-    } catch (e) {
-      // Tabela pode não existir ainda — exibe estado vazio elegante
+    } catch {
       setNpsFeedbacks([]);
     }
   };
@@ -341,11 +343,8 @@ export function Dashboard() {
     return null;
   };
 
-  // NPS Calculations
-  const filteredNps = npsFeedbacks.filter((item: any) => {
-    const dt = parseISO(item.criado_em);
-    return isWithinInterval(dt, { start: dateRange.start, end: dateRange.end });
-  });
+  // NPS já vem filtrado pelo período na query
+  const filteredNps = npsFeedbacks;
 
   const totalNpsCount = filteredNps.length;
   const npsSum = filteredNps.reduce((acc, curr) => acc + curr.nota, 0);
