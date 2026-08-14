@@ -1,10 +1,25 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock } from 'lucide-react';
+import { Mail, Lock, MessageCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { useClinic } from '../contexts/ClinicContext';
+
+const SUPPORT_WHATSAPP =
+  import.meta.env.VITE_SUPPORT_WHATSAPP_NUMBER || '5571985084522';
+const SUPPORT_EMAIL =
+  import.meta.env.VITE_SUPPORT_EMAIL?.trim() || '';
+
+const demoWhatsAppHref = `https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent(
+  'Olá! Gostaria de solicitar acesso para testar o Lumen. Meu nome é '
+)}`;
+
+const demoEmailHref = SUPPORT_EMAIL
+  ? `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Solicitar acesso para testar o Lumen')}&body=${encodeURIComponent(
+      'Olá! Gostaria de solicitar acesso para testar o Lumen.\n\nNome:\nE-mail para o convite:\n'
+    )}`
+  : null;
 
 export function Login() {
   const [email, setEmail] = useState('');
@@ -23,7 +38,7 @@ export function Login() {
     try {
       await signIn(email, password);
       navigate('/visao-geral');
-    } catch (err: any) {
+    } catch {
       setError('E-mail ou senha incorretos.');
     } finally {
       setLoading(false);
@@ -61,7 +76,7 @@ export function Login() {
               {clinicName}
             </h1>
           </div>
-          
+
           <h2 className="text-3xl font-heading font-bold text-text-main mb-8 text-center">
             Acesse sua conta
           </h2>
@@ -82,8 +97,8 @@ export function Login() {
             <div>
               <div className="flex justify-between items-center mb-2">
                 <label className="block text-sm font-medium text-text-main">Senha</label>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => navigate('/recuperar-senha')}
                   className="text-xs text-primary hover:underline"
                 >
@@ -114,6 +129,36 @@ export function Login() {
               Entrar na conta
             </Button>
           </form>
+
+          <div className="mt-8 rounded-2xl border border-border-card/60 bg-bg-card p-4 text-center">
+            <p className="text-sm font-medium text-text-main">
+              Quer testar o sistema?
+            </p>
+            <p className="mt-1 text-xs text-text-muted leading-relaxed">
+              Solicite um acesso ao administrador. Você recebe um convite no e-mail
+              e pode ser bloqueado a qualquer momento.
+            </p>
+            <div className="mt-4 flex flex-col sm:flex-row gap-2 justify-center">
+              <a
+                href={demoWhatsAppHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#20ba59] transition-colors"
+              >
+                <MessageCircle className="h-4 w-4" />
+                WhatsApp
+              </a>
+              {demoEmailHref && (
+                <a
+                  href={demoEmailHref}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-border-card bg-bg-base px-4 py-2.5 text-sm font-semibold text-text-main hover:border-primary/40 transition-colors"
+                >
+                  <Mail className="h-4 w-4" />
+                  E-mail
+                </a>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

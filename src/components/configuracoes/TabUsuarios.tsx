@@ -187,9 +187,15 @@ export function TabUsuarios() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Usuários do Sistema</CardTitle>
-        <Button onClick={() => setIsModalOpen(true)} size="sm">
+      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <CardTitle>Usuários do Sistema</CardTitle>
+          <p className="mt-1 text-sm text-text-muted">
+            Lista quem tem acesso, o e-mail e desde quando. Use “Convidar” para liberar um teste
+            e “Remover” para bloquear.
+          </p>
+        </div>
+        <Button onClick={() => setIsModalOpen(true)} size="sm" className="shrink-0">
           <UserPlus className="w-4 h-4 mr-2" />
           Convidar usuário
         </Button>
@@ -204,7 +210,7 @@ export function TabUsuarios() {
                 <tr>
                    <th className="px-4 sm:px-6 py-3 font-medium">Usuário</th>
                    <th className="px-4 sm:px-6 py-3 font-medium">Perfil</th>
-                   <th className="px-4 sm:px-6 py-3 font-medium hidden sm:table-cell">Data de criação</th>
+                   <th className="px-4 sm:px-6 py-3 font-medium hidden sm:table-cell">Acesso desde</th>
                    <th className="px-4 sm:px-6 py-3 font-medium text-right">Ações</th>
                 </tr>
               </thead>
@@ -220,6 +226,9 @@ export function TabUsuarios() {
                        ) : (
                          <p className="font-medium text-text-main truncate">{u.email}</p>
                        )}
+                       <p className="mt-1 text-[11px] text-text-muted sm:hidden">
+                         Acesso desde {new Date(u.created_at).toLocaleDateString('pt-BR')}
+                       </p>
                      </td>
                     <td className="px-4 sm:px-6 py-4">
                       <select 
