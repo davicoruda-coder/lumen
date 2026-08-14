@@ -171,9 +171,9 @@ export function Agenda() {
             </h1>
             
             <div className="flex items-center gap-2">
-              {(role === 'superadmin' || role === 'admin' || role === 'owner') && (
+              {(role === 'superadmin' || role === 'admin' || role === 'owner' || role === 'gestor') && (
                 <button 
-                  onClick={() => navigate('/bloqueio-agenda')}
+                  onClick={() => navigate('/configuracoes?tab=bloqueios')}
                   className="h-9 px-3 text-xs font-bold flex items-center justify-center rounded-[10px] bg-primary/10 text-primary hover:bg-primary/20 transition-colors border border-primary/20 shadow-sm"
                 >
                   <ShieldAlert className="w-4 h-4 sm:mr-1.5" />

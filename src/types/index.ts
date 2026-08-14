@@ -20,11 +20,6 @@ export interface ClinicConfig {
   tema_cor?: string;
   whatsapp_suporte?: string | null;
   updated_at?: string;
-  aniversario_cupom_ativo?: boolean;
-  aniversario_cupom_desconto?: number;
-  reativacao_ativa?: boolean;
-  reativacao_dias_ausencia?: number;
-  reativacao_oferta?: string;
 }
 
 export interface ClinicHours {

@@ -31,8 +31,11 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         <div style={{ padding: '2rem', backgroundColor: '#fee2e2', color: '#991b1b', minHeight: '100vh', fontFamily: 'monospace' }}>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>SISTEMA CRASHOU (React Error)</h1>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>Não foi possível carregar o Lumen</h1>
           <h2 style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>{this.state.error?.toString()}</h2>
+          <p style={{ marginTop: '0.75rem', marginBottom: '0.5rem' }}>
+            Recarregue a página. Se o problema continuar, envie o detalhe abaixo ao suporte.
+          </p>
           <pre style={{ overflowX: 'auto', marginTop: '1rem', padding: '1rem', backgroundColor: '#fef2f2', border: '1px solid #fca5a5' }}>
             {this.state.error?.stack}
           </pre>

@@ -20,7 +20,7 @@ interface ModuloCard {
   bgColor: string;
 }
 
-/** Agenda é núcleo (sempre visível). Campanhas não tem tela ainda. */
+/** Agenda é núcleo (sempre visível). */
 const MODULOS: ModuloCard[] = [
   {
     key: 'modulo_crm',

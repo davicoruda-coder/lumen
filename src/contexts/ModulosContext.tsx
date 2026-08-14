@@ -8,7 +8,6 @@ export interface ModulosConfig {
   modulo_crm: boolean;
   modulo_agenda: boolean;
   modulo_leads: boolean;
-  modulo_campanhas: boolean;
 }
 
 const DEFAULT_MODULOS: ModulosConfig = {
@@ -18,7 +17,6 @@ const DEFAULT_MODULOS: ModulosConfig = {
   modulo_crm: true,
   modulo_agenda: true,
   modulo_leads: true,
-  modulo_campanhas: false,
 };
 
 interface ModulosContextType {
@@ -38,7 +36,7 @@ export function ModulosProvider({ children }: { children: React.ReactNode }) {
     try {
       const { data, error } = await supabase
         .from('modulos_clinica')
-        .select('*')
+        .select('modulo_financeiro, modulo_prontuario, modulo_estoque, modulo_crm, modulo_agenda, modulo_leads')
         .limit(1);
 
       if (!error && data && data.length > 0) {
@@ -50,7 +48,6 @@ export function ModulosProvider({ children }: { children: React.ReactNode }) {
           modulo_crm: row.modulo_crm ?? true,
           modulo_agenda: row.modulo_agenda ?? true,
           modulo_leads: row.modulo_leads ?? true,
-          modulo_campanhas: row.modulo_campanhas ?? false,
         });
       }
       // Se não existe a tabela ou a linha, usa os defaults (base: CRM+Agenda+Leads)

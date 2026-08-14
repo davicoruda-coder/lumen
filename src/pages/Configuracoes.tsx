@@ -9,12 +9,13 @@ import { TabSeguranca } from '../components/configuracoes/TabSeguranca';
 import { TabPerfil } from '../components/configuracoes/TabPerfil';
 import { TabSuporte } from '../components/configuracoes/TabSuporte';
 import { TabLimpezaDados } from '../components/configuracoes/TabLimpezaDados';
+import { TabBloqueios } from '../components/configuracoes/TabBloqueios';
 import { useAuth } from '../contexts/AuthContext';
 import { useSearchParams } from 'react-router-dom';
 import { HScrollArea } from '../components/ui/HScrollArea';
-import { User, Building2, Users, ToggleLeft, Palette, HelpCircle } from 'lucide-react';
+import { User, Building2, Users, ToggleLeft, Palette, HelpCircle, CalendarOff } from 'lucide-react';
 
-type Tab = 'minha-conta' | 'personalizacao' | 'clinica' | 'equipe-agendas' | 'modulos' | 'suporte';
+type Tab = 'minha-conta' | 'personalizacao' | 'clinica' | 'equipe-agendas' | 'bloqueios' | 'modulos' | 'suporte';
 
 export function Configuracoes() {
   const { role, loading } = useAuth();
@@ -54,6 +55,7 @@ export function Configuracoes() {
     { id: 'personalizacao', label: 'Personalização', icon: Palette },
     ...(isAdmin ? [{ id: 'clinica' as Tab, label: 'Clínica', icon: Building2 }] : []),
     ...(isGestor ? [{ id: 'equipe-agendas' as Tab, label: 'Equipe & Agendas', icon: Users }] : []),
+    ...(isGestor ? [{ id: 'bloqueios' as Tab, label: 'Bloqueios', icon: CalendarOff }] : []),
     ...(isGestor ? [{ id: 'modulos' as Tab, label: 'Módulos', icon: ToggleLeft }] : []),
     ...(isGestor ? [{ id: 'suporte' as Tab, label: 'Suporte', icon: HelpCircle }] : []),
   ];
@@ -126,6 +128,8 @@ export function Configuracoes() {
             <TabAgendas />
           </div>
         )}
+
+        {activeTab === 'bloqueios' && <TabBloqueios />}
 
         {activeTab === 'modulos' && <TabModulos />}
 

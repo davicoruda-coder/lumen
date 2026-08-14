@@ -7,7 +7,6 @@ const routeTitles: Record<string, string> = {
   '/crm': 'CRM',
   '/cadastro': 'Cadastro',
   '/agenda': 'Agenda',
-  '/bloqueio-agenda': 'Bloqueio de Agenda',
   '/configuracoes': 'Configurações',
   '/financeiro': 'Financeiro',
   '/prontuario': 'Prontuário Eletrônico',
