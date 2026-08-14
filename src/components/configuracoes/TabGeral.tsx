@@ -204,7 +204,7 @@ export function TabGeral() {
             <div className="flex items-center gap-4 border border-border-card p-4 rounded-xl bg-bg-base/50">
               {clinicLogo ? (
                 <div className="relative group">
-                  <img src={clinicLogo} alt="Logo" className="w-16 h-16 object-cover rounded-lg bg-bg-card border border-border-card" />
+                  <img src={clinicLogo} alt="Logo" className="w-16 h-16 object-cover rounded-full bg-bg-card border border-border-card" />
                   <button 
                     onClick={removeLogo}
                     className="absolute -top-2 -right-2 bg-error text-white p-1 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity"

@@ -97,8 +97,8 @@ export function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
             src={clinicLogo} 
             alt={clinicName} 
             className={cn(
-              "object-contain transition-all duration-300",
-              isCollapsed ? "max-h-10 w-10" : "max-h-[100px] w-auto mb-4"
+              "rounded-full object-cover shadow-lg border-4 border-white/10 transition-all duration-300 bg-bg-card",
+              isCollapsed ? "h-10 w-10" : "h-24 w-24 mb-4"
             )} 
           />
         ) : (
