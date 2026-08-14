@@ -5,7 +5,7 @@ import { cn } from '../../lib/utils';
 import { compressImage } from '../../lib/imageCompressor';
 
 export interface FileUploadProps {
-  bucket: 'prontuarios' | 'financeiro';
+  bucket: 'prontuarios' | 'financeiro' | 'estoque';
   folderPath?: string; // Ex: paciente_id/ ou lancamento_id/
   onUploadSuccess: (url: string, path: string) => void;
   maxSizeMB?: number;

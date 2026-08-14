@@ -33,6 +33,12 @@ export function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
   const { user, role, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { modulos } = useModulos();
+  const hasClinicalAccess =
+    role === 'superadmin' ||
+    role === 'owner' ||
+    role === 'admin' ||
+    role === 'gestor' ||
+    role === 'especialista';
 
   const navItems = [
     // Visão Geral: Only for superadmin and owner
@@ -52,7 +58,7 @@ export function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
  
     // Módulos condicionais (Feature Flags)
     // Prontuário: gestores e especialistas (módulo ativo)
-    ...(modulos.modulo_prontuario
+    ...(modulos.modulo_prontuario && hasClinicalAccess
       ? [{ to: '/prontuario', label: 'Prontuário', icon: ClipboardList }]
       : []),
     

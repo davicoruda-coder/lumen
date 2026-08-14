@@ -694,51 +694,107 @@ ON CONFLICT (id) DO NOTHING;
 -- 6.1 POLÍTICAS DE RLS PARA OS BUCKETS
 -- BUCKET: avatars
 DROP POLICY IF EXISTS "Permitir upload de avatares para autenticados" ON storage.objects;
-CREATE POLICY "Permitir upload de avatares para autenticados" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'avatars');
+CREATE POLICY "Permitir upload de avatares para autenticados" ON storage.objects
+FOR INSERT TO authenticated
+WITH CHECK (
+  bucket_id = 'avatars'
+  AND name LIKE ((select auth.uid())::text || '-%')
+);
 DROP POLICY IF EXISTS "Permitir leitura de avatares publica" ON storage.objects;
 CREATE POLICY "Permitir leitura de avatares publica" ON storage.objects FOR SELECT TO public USING (bucket_id = 'avatars');
 DROP POLICY IF EXISTS "Permitir exclusao de avatares pelo dono" ON storage.objects;
-CREATE POLICY "Permitir exclusao de avatares pelo dono" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'avatars');
+CREATE POLICY "Permitir exclusao de avatares pelo dono" ON storage.objects
+FOR DELETE TO authenticated
+USING (
+  bucket_id = 'avatars'
+  AND name LIKE ((select auth.uid())::text || '-%')
+);
 
 -- BUCKET: clinic-assets
 DROP POLICY IF EXISTS "Allow Auth Uploads" ON storage.objects;
-CREATE POLICY "Allow Auth Uploads" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'clinic-assets');
+CREATE POLICY "Allow Auth Uploads" ON storage.objects
+FOR INSERT TO authenticated
+WITH CHECK (
+  bucket_id = 'clinic-assets'
+  AND public.current_user_role() IN ('superadmin', 'owner', 'admin')
+);
 DROP POLICY IF EXISTS "Allow Public Select" ON storage.objects;
 CREATE POLICY "Allow Public Select" ON storage.objects FOR SELECT TO public USING (bucket_id = 'clinic-assets');
 DROP POLICY IF EXISTS "Allow Auth Deletes" ON storage.objects;
-CREATE POLICY "Allow Auth Deletes" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'clinic-assets');
+CREATE POLICY "Allow Auth Deletes" ON storage.objects
+FOR DELETE TO authenticated
+USING (
+  bucket_id = 'clinic-assets'
+  AND public.current_user_role() IN ('superadmin', 'owner', 'admin')
+);
 
 -- BUCKET: prontuarios
 DROP POLICY IF EXISTS "Permitir upload no prontuario para autenticados" ON storage.objects;
-CREATE POLICY "Permitir upload no prontuario para autenticados" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'prontuarios');
+CREATE POLICY "Permitir upload no prontuario para autenticados" ON storage.objects
+FOR INSERT TO authenticated
+WITH CHECK (
+  bucket_id = 'prontuarios'
+  AND public.current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista')
+);
 DROP POLICY IF EXISTS "Permitir leitura no prontuario para autenticados" ON storage.objects;
-CREATE POLICY "Permitir leitura no prontuario para autenticados" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'prontuarios');
+CREATE POLICY "Permitir leitura no prontuario para autenticados" ON storage.objects
+FOR SELECT TO authenticated
+USING (
+  bucket_id = 'prontuarios'
+  AND public.current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista')
+);
 DROP POLICY IF EXISTS "Permitir exclusao no prontuario para autenticados" ON storage.objects;
-CREATE POLICY "Permitir exclusao no prontuario para autenticados" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'prontuarios');
+CREATE POLICY "Permitir exclusao no prontuario para autenticados" ON storage.objects
+FOR DELETE TO authenticated
+USING (bucket_id = 'prontuarios' AND public.check_is_admin());
 
 -- BUCKET: assinaturas
 DROP POLICY IF EXISTS "Upload ass" ON storage.objects;
-CREATE POLICY "Upload ass" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'assinaturas');
+CREATE POLICY "Upload ass" ON storage.objects
+FOR INSERT TO authenticated
+WITH CHECK (
+  bucket_id = 'assinaturas'
+  AND public.current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista')
+);
 DROP POLICY IF EXISTS "Leitura ass" ON storage.objects;
-CREATE POLICY "Leitura ass" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'assinaturas');
+CREATE POLICY "Leitura ass" ON storage.objects
+FOR SELECT TO authenticated
+USING (
+  bucket_id = 'assinaturas'
+  AND public.current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista')
+);
 DROP POLICY IF EXISTS "Delete ass" ON storage.objects;
-CREATE POLICY "Delete ass" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'assinaturas');
+CREATE POLICY "Delete ass" ON storage.objects
+FOR DELETE TO authenticated
+USING (bucket_id = 'assinaturas' AND public.check_is_admin());
 
 -- BUCKET: financeiro
 DROP POLICY IF EXISTS "Permitir upload no financeiro para autenticados" ON storage.objects;
-CREATE POLICY "Permitir upload no financeiro para autenticados" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'financeiro');
+CREATE POLICY "Permitir upload no financeiro para autenticados" ON storage.objects
+FOR INSERT TO authenticated
+WITH CHECK (bucket_id = 'financeiro' AND public.check_is_admin());
 DROP POLICY IF EXISTS "Permitir leitura no financeiro para autenticados" ON storage.objects;
-CREATE POLICY "Permitir leitura no financeiro para autenticados" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'financeiro');
+CREATE POLICY "Permitir leitura no financeiro para autenticados" ON storage.objects
+FOR SELECT TO authenticated
+USING (bucket_id = 'financeiro' AND public.check_is_admin());
 DROP POLICY IF EXISTS "Permitir exclusao no financeiro para autenticados" ON storage.objects;
-CREATE POLICY "Permitir exclusao no financeiro para autenticados" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'financeiro');
+CREATE POLICY "Permitir exclusao no financeiro para autenticados" ON storage.objects
+FOR DELETE TO authenticated
+USING (bucket_id = 'financeiro' AND public.check_is_admin());
 
 -- BUCKET: estoque
 DROP POLICY IF EXISTS "Permitir upload no estoque para autenticados" ON storage.objects;
-CREATE POLICY "Permitir upload no estoque para autenticados" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'estoque');
+CREATE POLICY "Permitir upload no estoque para autenticados" ON storage.objects
+FOR INSERT TO authenticated
+WITH CHECK (bucket_id = 'estoque' AND public.check_is_admin());
 DROP POLICY IF EXISTS "Permitir leitura no estoque para autenticados" ON storage.objects;
-CREATE POLICY "Permitir leitura no estoque para autenticados" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'estoque');
+CREATE POLICY "Permitir leitura no estoque para autenticados" ON storage.objects
+FOR SELECT TO authenticated
+USING (bucket_id = 'estoque' AND public.check_is_admin());
 DROP POLICY IF EXISTS "Permitir exclusao no estoque para autenticados" ON storage.objects;
-CREATE POLICY "Permitir exclusao no estoque para autenticados" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'estoque');
+CREATE POLICY "Permitir exclusao no estoque para autenticados" ON storage.objects
+FOR DELETE TO authenticated
+USING (bucket_id = 'estoque' AND public.check_is_admin());
 
 -- =========================================================================
 -- 7. POLÍTICAS DE RLS GRANULARES PARA TODAS AS 27 TABELAS
@@ -909,25 +965,95 @@ CREATE POLICY "Acesso total comissoes_proc" ON public.comissoes_procedimentos FO
 
 -- 7.8 Políticas: fichas_clinicas & anamneses & evolucoes & galeria_paciente & templates_clinicos & documentos_pacientes
 DROP POLICY IF EXISTS "Acesso total fichas" ON public.fichas_clinicas;
-CREATE POLICY "Acesso total fichas" ON public.fichas_clinicas FOR ALL TO authenticated USING (((select auth.uid()) IS NOT NULL));
+DROP POLICY IF EXISTS "Clinicos leem fichas" ON public.fichas_clinicas;
+DROP POLICY IF EXISTS "Clinicos criam fichas" ON public.fichas_clinicas;
+DROP POLICY IF EXISTS "Clinicos atualizam fichas" ON public.fichas_clinicas;
+DROP POLICY IF EXISTS "Admins excluem fichas" ON public.fichas_clinicas;
+CREATE POLICY "Clinicos leem fichas" ON public.fichas_clinicas FOR SELECT TO authenticated
+USING (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
+CREATE POLICY "Clinicos criam fichas" ON public.fichas_clinicas FOR INSERT TO authenticated
+WITH CHECK (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
+CREATE POLICY "Clinicos atualizam fichas" ON public.fichas_clinicas FOR UPDATE TO authenticated
+USING (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'))
+WITH CHECK (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
+CREATE POLICY "Admins excluem fichas" ON public.fichas_clinicas FOR DELETE TO authenticated
+USING (check_is_admin());
+
 DROP POLICY IF EXISTS "Acesso total anamneses" ON public.anamneses;
-CREATE POLICY "Acesso total anamneses" ON public.anamneses FOR ALL TO authenticated USING (((select auth.uid()) IS NOT NULL));
+DROP POLICY IF EXISTS "Clinicos leem anamneses" ON public.anamneses;
+DROP POLICY IF EXISTS "Clinicos criam anamneses" ON public.anamneses;
+DROP POLICY IF EXISTS "Clinicos atualizam anamneses" ON public.anamneses;
+DROP POLICY IF EXISTS "Admins excluem anamneses" ON public.anamneses;
+CREATE POLICY "Clinicos leem anamneses" ON public.anamneses FOR SELECT TO authenticated
+USING (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
+CREATE POLICY "Clinicos criam anamneses" ON public.anamneses FOR INSERT TO authenticated
+WITH CHECK (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
+CREATE POLICY "Clinicos atualizam anamneses" ON public.anamneses FOR UPDATE TO authenticated
+USING (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'))
+WITH CHECK (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
+CREATE POLICY "Admins excluem anamneses" ON public.anamneses FOR DELETE TO authenticated
+USING (check_is_admin());
+
 DROP POLICY IF EXISTS "Acesso total evolucoes" ON public.evolucoes;
-CREATE POLICY "Acesso total evolucoes" ON public.evolucoes FOR ALL TO authenticated USING (((select auth.uid()) IS NOT NULL));
+DROP POLICY IF EXISTS "Clinicos leem evolucoes" ON public.evolucoes;
+DROP POLICY IF EXISTS "Clinicos criam evolucoes" ON public.evolucoes;
+DROP POLICY IF EXISTS "Admins excluem evolucoes" ON public.evolucoes;
+CREATE POLICY "Clinicos leem evolucoes" ON public.evolucoes FOR SELECT TO authenticated
+USING (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
+CREATE POLICY "Clinicos criam evolucoes" ON public.evolucoes FOR INSERT TO authenticated
+WITH CHECK (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
+CREATE POLICY "Admins excluem evolucoes" ON public.evolucoes FOR DELETE TO authenticated
+USING (check_is_admin());
+
 DROP POLICY IF EXISTS "Acesso total galeria" ON public.galeria_paciente;
-CREATE POLICY "Acesso total galeria" ON public.galeria_paciente FOR ALL TO authenticated USING (((select auth.uid()) IS NOT NULL));
+DROP POLICY IF EXISTS "Clinicos leem galeria" ON public.galeria_paciente;
+DROP POLICY IF EXISTS "Clinicos criam galeria" ON public.galeria_paciente;
+DROP POLICY IF EXISTS "Admins excluem galeria" ON public.galeria_paciente;
+CREATE POLICY "Clinicos leem galeria" ON public.galeria_paciente FOR SELECT TO authenticated
+USING (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
+CREATE POLICY "Clinicos criam galeria" ON public.galeria_paciente FOR INSERT TO authenticated
+WITH CHECK (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
+CREATE POLICY "Admins excluem galeria" ON public.galeria_paciente FOR DELETE TO authenticated
+USING (check_is_admin());
+
 DROP POLICY IF EXISTS "Acesso total templates" ON public.templates_clinicos;
-CREATE POLICY "Acesso total templates" ON public.templates_clinicos FOR ALL TO authenticated USING (((select auth.uid()) IS NOT NULL));
+DROP POLICY IF EXISTS "Clinicos leem templates" ON public.templates_clinicos;
+DROP POLICY IF EXISTS "Admins criam templates" ON public.templates_clinicos;
+DROP POLICY IF EXISTS "Admins atualizam templates" ON public.templates_clinicos;
+DROP POLICY IF EXISTS "Admins excluem templates" ON public.templates_clinicos;
+CREATE POLICY "Clinicos leem templates" ON public.templates_clinicos FOR SELECT TO authenticated
+USING (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
+CREATE POLICY "Admins criam templates" ON public.templates_clinicos FOR INSERT TO authenticated
+WITH CHECK (check_is_admin());
+CREATE POLICY "Admins atualizam templates" ON public.templates_clinicos FOR UPDATE TO authenticated
+USING (check_is_admin()) WITH CHECK (check_is_admin());
+CREATE POLICY "Admins excluem templates" ON public.templates_clinicos FOR DELETE TO authenticated
+USING (check_is_admin());
+
 DROP POLICY IF EXISTS "Acesso total doc_pacientes" ON public.documentos_pacientes;
-CREATE POLICY "Acesso total doc_pacientes" ON public.documentos_pacientes FOR ALL TO authenticated USING (((select auth.uid()) IS NOT NULL));
+DROP POLICY IF EXISTS "Clinicos leem documentos" ON public.documentos_pacientes;
+DROP POLICY IF EXISTS "Clinicos criam documentos" ON public.documentos_pacientes;
+DROP POLICY IF EXISTS "Admins excluem documentos" ON public.documentos_pacientes;
+CREATE POLICY "Clinicos leem documentos" ON public.documentos_pacientes FOR SELECT TO authenticated
+USING (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
+CREATE POLICY "Clinicos criam documentos" ON public.documentos_pacientes FOR INSERT TO authenticated
+WITH CHECK (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
+CREATE POLICY "Admins excluem documentos" ON public.documentos_pacientes FOR DELETE TO authenticated
+USING (check_is_admin());
 
 -- 7.9 Políticas: produtos_estoque & movimentacoes_estoque & kits_procedimento
 DROP POLICY IF EXISTS "Acesso total produtos" ON public.produtos_estoque;
-CREATE POLICY "Acesso total produtos" ON public.produtos_estoque FOR ALL TO authenticated USING (((select auth.uid()) IS NOT NULL));
+DROP POLICY IF EXISTS "Admins gerenciam produtos" ON public.produtos_estoque;
+CREATE POLICY "Admins gerenciam produtos" ON public.produtos_estoque FOR ALL TO authenticated
+USING (check_is_admin()) WITH CHECK (check_is_admin());
 DROP POLICY IF EXISTS "Acesso total movimentacoes" ON public.movimentacoes_estoque;
-CREATE POLICY "Acesso total movimentacoes" ON public.movimentacoes_estoque FOR ALL TO authenticated USING (((select auth.uid()) IS NOT NULL));
+DROP POLICY IF EXISTS "Admins gerenciam movimentacoes" ON public.movimentacoes_estoque;
+CREATE POLICY "Admins gerenciam movimentacoes" ON public.movimentacoes_estoque FOR ALL TO authenticated
+USING (check_is_admin()) WITH CHECK (check_is_admin());
 DROP POLICY IF EXISTS "Acesso total kits" ON public.kits_procedimento;
-CREATE POLICY "Acesso total kits" ON public.kits_procedimento FOR ALL TO authenticated USING (((select auth.uid()) IS NOT NULL));
+DROP POLICY IF EXISTS "Admins gerenciam kits" ON public.kits_procedimento;
+CREATE POLICY "Admins gerenciam kits" ON public.kits_procedimento FOR ALL TO authenticated
+USING (check_is_admin()) WITH CHECK (check_is_admin());
 
 -- 7.10 Políticas: nps_feedbacks
 DROP POLICY IF EXISTS "Acesso total nps" ON public.nps_feedbacks;

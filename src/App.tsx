@@ -119,8 +119,23 @@ function ModuleRoute({
   return <>{children}</>;
 }
 
-/** Prontuário: todos autenticados com módulo ativo (especialistas incluídos). */
+/** Prontuário: equipe clínica autorizada com módulo ativo. */
 function ProntuarioRoute({ children }: { children: React.ReactNode }) {
+  const { role, loading } = useAuth();
+
+  if (loading || role === null) return <PageLoader />;
+
+  const hasClinicalAccess =
+    role === 'superadmin' ||
+    role === 'owner' ||
+    role === 'admin' ||
+    role === 'gestor' ||
+    role === 'especialista';
+
+  if (!hasClinicalAccess) {
+    return <Navigate to="/agenda" replace />;
+  }
+
   return <ModuleRoute flag="modulo_prontuario">{children}</ModuleRoute>;
 }
 

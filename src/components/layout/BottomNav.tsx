@@ -27,6 +27,12 @@ export function BottomNav() {
   const { modulos } = useModulos();
   const location = useLocation();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const hasClinicalAccess =
+    role === 'superadmin' ||
+    role === 'owner' ||
+    role === 'admin' ||
+    role === 'gestor' ||
+    role === 'especialista';
 
   // Close drawer on route change
   React.useEffect(() => {
@@ -47,7 +53,7 @@ export function BottomNav() {
   ];
 
   const moreNavItems = [
-    ...(modulos.modulo_prontuario
+    ...(modulos.modulo_prontuario && hasClinicalAccess
       ? [{ to: '/prontuario', label: 'Prontuário', icon: ClipboardList }]
       : []),
     ...(modulos.modulo_prontuario && (role === 'superadmin' || role === 'owner' || role === 'admin' || role === 'gestor')
