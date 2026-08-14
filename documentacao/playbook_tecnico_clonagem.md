@@ -12,8 +12,9 @@ npm run clonar-clinica
 - [ ] Criar projeto Supabase (sa-east-1)
 - [ ] Rodar `MASTER_SCHEMA.sql` + `clinic_config_personalizar.sql`
 - [ ] Auth: superadmin + `promover_superadmin.sql`
+- [ ] Publicar a Edge Function `admin-create-user`
 - [ ] Vercel: `vercel-env.txt` + URLs Auth
-- [ ] Convidar equipe pelo app
+- [ ] Adicionar equipe pelo app com senha temporária
 - [ ] Agendas + testes
 
 ## Variáveis Vercel
@@ -32,6 +33,14 @@ npm install
 
 ## Notas
 
-- Sem Edge Functions neste repo
+- A Edge Function `admin-create-user` usa a service role somente no servidor,
+  valida o cargo de quem fez a solicitação e cria a conta sem enviar e-mail.
+- Para publicar em cada clínica:
+
+```bash
+supabase login
+supabase functions deploy admin-create-user --project-ref SUA_REF
+```
+
 - Sem importação n8n
 - Migração de banco antigo: `MIGRATION_n8n_legacy.sql`
