@@ -12,7 +12,7 @@ export function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { signIn } = useAuth();
-  const { clinicName } = useClinic();
+  const { clinicName, clinicLogo } = useClinic();
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -34,19 +34,30 @@ export function Login() {
     <div className="min-h-screen flex bg-bg-base">
       {/* Left Panel */}
       <div className="hidden lg:flex lg:w-[40%] bg-primary flex-col justify-center items-center p-12 text-center shadow-2xl z-10">
-        <h1 className="text-white font-heading text-5xl mb-4 font-semibold">
+        {clinicLogo ? (
+          <img
+            src={clinicLogo}
+            alt={clinicName}
+            className="h-24 w-24 rounded-full object-cover mb-6 border-4 border-white/20 bg-white/10"
+          />
+        ) : null}
+        <h1 className="text-white font-heading text-5xl font-semibold">
           {clinicName}
         </h1>
-        <p className="text-primary-light font-heading text-xl opacity-90 tracking-wide">
-          Gestão integrada para sua clínica
-        </p>
       </div>
 
       {/* Right Panel */}
       <div className="flex-1 flex flex-col justify-center items-center p-8">
         <div className="w-full max-w-sm">
           <div className="text-center mb-10 lg:hidden">
-            <h1 className="text-primary font-heading text-4xl mb-2 font-semibold">
+            {clinicLogo ? (
+              <img
+                src={clinicLogo}
+                alt={clinicName}
+                className="h-16 w-16 rounded-full object-cover mx-auto mb-4 border border-primary/20"
+              />
+            ) : null}
+            <h1 className="text-primary font-heading text-4xl font-semibold">
               {clinicName}
             </h1>
           </div>
