@@ -93,8 +93,25 @@ Deno.serve(async (request) => {
   }
 
   const { error: deleteError } = await admin.auth.admin.deleteUser(userId);
-  if (deleteError) {
+  const authMissing = deleteError?.message?.toLowerCase().includes('not found');
+  if (deleteError && !authMissing) {
     return jsonResponse({ error: deleteError.message || 'Não foi possível remover o usuário.' }, 400);
+  }
+
+  // A FK para auth.users pode não ter CASCADE em bancos antigos: apaga o cargo também.
+  const { error: roleRowError } = await admin.from('users').delete().eq('id', userId);
+  if (roleRowError) {
+    return jsonResponse({ error: 'Conta removida, mas o cargo permaneceu no banco.' }, 500);
+  }
+
+  const { data: leftover } = await admin
+    .from('users')
+    .select('id')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (leftover) {
+    return jsonResponse({ error: 'O usuário continua no banco após a remoção.' }, 500);
   }
 
   return jsonResponse({ ok: true, userId }, 200);

@@ -183,7 +183,7 @@ export function TabUsuarios() {
         body: { userId: id },
       });
       if (error) throw error;
-      setUsers(prev => prev.filter(u => u.id !== id));
+      await fetchUsers();
       alert('Usuário removido.');
     } catch (error: unknown) {
       const functionError = error as { message?: string; context?: unknown };
