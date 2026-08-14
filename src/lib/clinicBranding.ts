@@ -1,12 +1,41 @@
-/** Nome padrão antes do clinic_config carregar ou em banco novo. */
+/** Nome padrão na UI quando a clínica ainda não foi personalizada. */
 export const DEFAULT_CLINIC_NAME = 'Minha Clínica';
 
-/** Título da aba quando o nome da clínica ainda não foi personalizado. */
+/** Título da aba enquanto a clínica está no estado padrão (marca do produto). */
 export const FALLBACK_DOCUMENT_TITLE = 'Lumen';
+
+/** Nomes reservados do produto / placeholders — não contam como marca da clínica. */
+const UNBRANDED_CLINIC_NAMES = new Set([
+  'minha clínica',
+  'minha clinica',
+  'lumen',
+]);
 
 const FAVICON_BG = '#1e3a5f';
 const FAVICON_FG = '#ffffff';
 const FAVICON_SIZE = 64;
+
+export function isDefaultClinicName(name?: string | null): boolean {
+  const normalized = name?.trim().toLowerCase() || '';
+  if (!normalized) return true;
+  return UNBRANDED_CLINIC_NAMES.has(normalized);
+}
+
+/** Nome exibido no app: genérico até a clínica personalizar. */
+export function resolveClinicDisplayName(name?: string | null): string {
+  const trimmed = name?.trim() || '';
+  return isDefaultClinicName(trimmed) ? DEFAULT_CLINIC_NAME : trimmed;
+}
+
+/** Logo só aparece depois que a clínica tem nome próprio. */
+export function resolveClinicDisplayLogo(
+  name?: string | null,
+  logoUrl?: string | null
+): string | null {
+  if (isDefaultClinicName(name)) return null;
+  const logo = logoUrl?.trim() || '';
+  return logo || null;
+}
 
 /** SVG da aba: inicial circular da clínica em fundo azul-escuro neutro. */
 export function buildClinicLetterFaviconSvg(letter: string): string {
@@ -15,9 +44,8 @@ export function buildClinicLetterFaviconSvg(letter: string): string {
 }
 
 function clinicInitial(clinicName: string): string {
-  const name = clinicName?.trim() || DEFAULT_CLINIC_NAME;
-  if (name === DEFAULT_CLINIC_NAME) return 'L';
-  return name.charAt(0).toUpperCase();
+  if (isDefaultClinicName(clinicName)) return 'L';
+  return resolveClinicDisplayName(clinicName).charAt(0).toUpperCase();
 }
 
 function setLetterFavicon(clinicName: string) {
@@ -79,8 +107,9 @@ function applyCircularLogoFavicon(logoUrl: string, clinicName: string) {
 
 /** Favicon dinâmico: logo circular da clínica ou inicial no padrão neutro. */
 export function applyClinicFavicon(clinicName: string, clinicLogo?: string | null) {
-  if (clinicLogo) {
-    applyCircularLogoFavicon(clinicLogo, clinicName);
+  const logo = resolveClinicDisplayLogo(clinicName, clinicLogo);
+  if (logo) {
+    applyCircularLogoFavicon(logo, clinicName);
     return;
   }
 
@@ -89,17 +118,18 @@ export function applyClinicFavicon(clinicName: string, clinicLogo?: string | nul
 
 /** Atualiza título da aba, meta description e favicon conforme a clínica (white-label). */
 export function applyClinicBranding(clinicName: string, clinicLogo?: string | null) {
-  const name = clinicName?.trim() || DEFAULT_CLINIC_NAME;
-  document.title =
-    name === DEFAULT_CLINIC_NAME ? FALLBACK_DOCUMENT_TITLE : name;
+  const displayName = resolveClinicDisplayName(clinicName);
+  const unbranded = isDefaultClinicName(clinicName);
+
+  document.title = unbranded ? FALLBACK_DOCUMENT_TITLE : displayName;
 
   const metaDescription = document.querySelector('meta[name="description"]');
   if (metaDescription) {
     metaDescription.setAttribute(
       'content',
-      name === DEFAULT_CLINIC_NAME
+      unbranded
         ? 'Gestão integrada para clínicas de estética e saúde.'
-        : `Painel de gestão — ${name}.`
+        : `Painel de gestão — ${displayName}.`
     );
   }
 
