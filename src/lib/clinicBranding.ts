@@ -6,11 +6,12 @@ export const FALLBACK_DOCUMENT_TITLE = 'Lumen';
 
 const FAVICON_BG = '#1e3a5f';
 const FAVICON_FG = '#ffffff';
+const FAVICON_SIZE = 64;
 
-/** SVG da aba: inicial da clínica em fundo azul-escuro neutro. */
+/** SVG da aba: inicial circular da clínica em fundo azul-escuro neutro. */
 export function buildClinicLetterFaviconSvg(letter: string): string {
   const char = (letter?.trim().charAt(0) || 'C').toUpperCase();
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="6" fill="${FAVICON_BG}"/><text x="16" y="22" text-anchor="middle" font-family="system-ui,sans-serif" font-size="16" font-weight="700" fill="${FAVICON_FG}">${char}</text></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="${FAVICON_BG}"/><text x="16" y="21.5" text-anchor="middle" font-family="system-ui,sans-serif" font-size="15" font-weight="700" fill="${FAVICON_FG}">${char}</text></svg>`;
 }
 
 function clinicInitial(clinicName: string): string {
@@ -19,9 +20,14 @@ function clinicInitial(clinicName: string): string {
   return name.charAt(0).toUpperCase();
 }
 
+function setLetterFavicon(clinicName: string) {
+  const svg = buildClinicLetterFaviconSvg(clinicInitial(clinicName));
+  setFaviconHref(`data:image/svg+xml,${encodeURIComponent(svg)}`, 'image/svg+xml');
+}
+
 function setFaviconHref(href: string, type?: string) {
   const selector = 'link[rel="icon"], link[rel="shortcut icon"]';
-  let links = document.querySelectorAll<HTMLLinkElement>(selector);
+  const links = document.querySelectorAll<HTMLLinkElement>(selector);
 
   if (links.length === 0) {
     const link = document.createElement('link');
@@ -39,15 +45,46 @@ function setFaviconHref(href: string, type?: string) {
   });
 }
 
-/** Favicon dinâmico: logo da clínica ou inicial no padrão neutro. */
+/** Desenha a logo em círculo para a aba (evita favicon quadrado). */
+function applyCircularLogoFavicon(logoUrl: string, clinicName: string) {
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = FAVICON_SIZE;
+    canvas.height = FAVICON_SIZE;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      setLetterFavicon(clinicName);
+      return;
+    }
+
+    ctx.beginPath();
+    ctx.arc(FAVICON_SIZE / 2, FAVICON_SIZE / 2, FAVICON_SIZE / 2, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+
+    const scale = Math.max(FAVICON_SIZE / img.width, FAVICON_SIZE / img.height);
+    const w = img.width * scale;
+    const h = img.height * scale;
+    const x = (FAVICON_SIZE - w) / 2;
+    const y = (FAVICON_SIZE - h) / 2;
+    ctx.drawImage(img, x, y, w, h);
+
+    setFaviconHref(canvas.toDataURL('image/png'), 'image/png');
+  };
+  img.onerror = () => setLetterFavicon(clinicName);
+  img.src = logoUrl;
+}
+
+/** Favicon dinâmico: logo circular da clínica ou inicial no padrão neutro. */
 export function applyClinicFavicon(clinicName: string, clinicLogo?: string | null) {
   if (clinicLogo) {
-    setFaviconHref(clinicLogo);
+    applyCircularLogoFavicon(clinicLogo, clinicName);
     return;
   }
 
-  const svg = buildClinicLetterFaviconSvg(clinicInitial(clinicName));
-  setFaviconHref(`data:image/svg+xml,${encodeURIComponent(svg)}`, 'image/svg+xml');
+  setLetterFavicon(clinicName);
 }
 
 /** Atualiza título da aba, meta description e favicon conforme a clínica (white-label). */
