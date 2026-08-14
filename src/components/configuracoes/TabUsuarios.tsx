@@ -179,13 +179,23 @@ export function TabUsuarios() {
     if (!confirm(`Tem certeza que deseja remover o usuário ${email}?`)) return;
 
     try {
-      // Removing user from users table. Trigger/Foreign key cascades or Admin API needed to remove from auth.users.
-      const { error } = await supabase.from('users').delete().eq('id', id);
+      const { error } = await supabase.functions.invoke('admin-delete-user', {
+        body: { userId: id },
+      });
       if (error) throw error;
       setUsers(prev => prev.filter(u => u.id !== id));
       alert('Usuário removido.');
-    } catch {
-      alert('Erro ao remover usuário.');
+    } catch (error: unknown) {
+      const functionError = error as { message?: string; context?: unknown };
+      const context = functionError.context;
+      let message = functionError.message || 'Erro ao remover usuário.';
+
+      if (context instanceof Response) {
+        const body = await context.json().catch(() => null);
+        message = body?.error || message;
+      }
+
+      alert(message);
     }
   };
 
