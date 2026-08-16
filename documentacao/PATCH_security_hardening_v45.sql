@@ -651,12 +651,12 @@ BEGIN
   END IF;
 
   IF p_incluir_agendamentos THEN
-    DELETE FROM public.agendamentos_estetica;
+    DELETE FROM public.agendamentos_estetica WHERE id IS NOT NULL;
     GET DIAGNOSTICS v_ag_count = ROW_COUNT;
   END IF;
 
   IF p_incluir_notas THEN
-    DELETE FROM public.lead_notes;
+    DELETE FROM public.lead_notes WHERE id IS NOT NULL;
     GET DIAGNOSTICS v_notas_count = ROW_COUNT;
   END IF;
 
@@ -669,8 +669,8 @@ BEGIN
     WHERE ficha_id IN (SELECT id FROM public.fichas_clinicas);
     DELETE FROM public.anamneses
     WHERE ficha_id IN (SELECT id FROM public.fichas_clinicas);
-    DELETE FROM public.fichas_clinicas;
-    DELETE FROM public.leads_estetica;
+    DELETE FROM public.fichas_clinicas WHERE id IS NOT NULL;
+    DELETE FROM public.leads_estetica WHERE id IS NOT NULL;
     GET DIAGNOSTICS v_leads_count = ROW_COUNT;
   END IF;
 

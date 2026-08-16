@@ -1,21 +1,5 @@
--- Hotfix: garante RPC limpar_dados_teste + bypass de RLS + reload do PostgREST
--- Rodar no SQL Editor do projeto lumen. Idempotente.
-
-BEGIN;
-
-CREATE TABLE IF NOT EXISTS public.audit_data_cleanup (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  performed_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
-  payload jsonb NOT NULL,
-  result jsonb,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-
-ALTER TABLE public.audit_data_cleanup ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Superadmin le audit cleanup" ON public.audit_data_cleanup;
-CREATE POLICY "Superadmin le audit cleanup" ON public.audit_data_cleanup
-FOR SELECT TO authenticated
-USING (public.current_user_role() = 'superadmin');
+-- Hotfix v45c: DELETE com WHERE (PostgREST safeupdate / código 21000)
+-- Rodar no SQL Editor se a CLI não aplicar. Idempotente.
 
 CREATE OR REPLACE FUNCTION public.limpar_dados_teste(
   p_incluir_agendamentos boolean DEFAULT true,
@@ -70,7 +54,6 @@ BEGIN
     WHERE ativo = false;
 
     IF v_ids IS NOT NULL AND array_length(v_ids, 1) IS NOT NULL THEN
-      -- garante que não restam agendamentos nas agendas inativas
       DELETE FROM public.agendamentos_estetica WHERE agenda_id = ANY(v_ids);
       DELETE FROM public.agenda_hours WHERE agenda_id = ANY(v_ids);
       DELETE FROM public.agendas WHERE id = ANY(v_ids);
@@ -101,14 +84,4 @@ BEGIN
 END;
 $$;
 
-REVOKE EXECUTE ON FUNCTION public.limpar_dados_teste(boolean, boolean, boolean, boolean) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.limpar_dados_teste(boolean, boolean, boolean, boolean) TO authenticated;
-
-COMMIT;
-
--- Força o PostgREST a reconhecer a função
 NOTIFY pgrst, 'reload schema';
-
--- Diagnóstico rápido (rode separado se quiser):
--- SELECT proname FROM pg_proc WHERE proname = 'limpar_dados_teste';
--- SELECT id, role FROM public.users WHERE id = auth.uid();
