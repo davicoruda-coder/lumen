@@ -634,6 +634,7 @@ RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO 'public'
+SET row_security TO off
 AS $$
 DECLARE
   v_role text;
@@ -646,7 +647,7 @@ DECLARE
 BEGIN
   v_role := public.current_user_role();
   IF v_role IS DISTINCT FROM 'superadmin' THEN
-    RAISE EXCEPTION 'Apenas superadmin pode limpar dados de teste.';
+    RAISE EXCEPTION 'Apenas superadmin pode limpar dados de teste. Seu papel atual: %', COALESCE(v_role, 'null');
   END IF;
 
   IF p_incluir_agendamentos THEN
@@ -660,6 +661,15 @@ BEGIN
   END IF;
 
   IF p_incluir_leads THEN
+    DELETE FROM public.documentos_pacientes
+    WHERE ficha_id IN (SELECT id FROM public.fichas_clinicas);
+    DELETE FROM public.galeria_paciente
+    WHERE ficha_id IN (SELECT id FROM public.fichas_clinicas);
+    DELETE FROM public.evolucoes
+    WHERE ficha_id IN (SELECT id FROM public.fichas_clinicas);
+    DELETE FROM public.anamneses
+    WHERE ficha_id IN (SELECT id FROM public.fichas_clinicas);
+    DELETE FROM public.fichas_clinicas;
     DELETE FROM public.leads_estetica;
     GET DIAGNOSTICS v_leads_count = ROW_COUNT;
   END IF;
@@ -670,7 +680,8 @@ BEGIN
     FROM public.agendas
     WHERE ativo = false;
 
-    IF cardinality(v_ids) > 0 THEN
+    IF v_ids IS NOT NULL AND array_length(v_ids, 1) IS NOT NULL THEN
+      DELETE FROM public.agendamentos_estetica WHERE agenda_id = ANY(v_ids);
       DELETE FROM public.agenda_hours WHERE agenda_id = ANY(v_ids);
       DELETE FROM public.agendas WHERE id = ANY(v_ids);
       GET DIAGNOSTICS v_agendas_count = ROW_COUNT;

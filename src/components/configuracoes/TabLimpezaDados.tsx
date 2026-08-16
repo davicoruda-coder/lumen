@@ -55,7 +55,13 @@ export function TabLimpezaDados() {
       setResults(res);
       setStep('idle');
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Erro ao limpar dados. Verifique se o patch v4.5 foi aplicado.');
+      const msg =
+        err && typeof err === 'object' && 'message' in err && typeof (err as { message: unknown }).message === 'string'
+          ? (err as { message: string }).message
+          : err instanceof Error
+            ? err.message
+            : 'Erro ao limpar dados. Verifique se o patch v4.5 foi aplicado.';
+      setError(msg);
       setStep('idle');
     } finally {
       setLoading(false);
