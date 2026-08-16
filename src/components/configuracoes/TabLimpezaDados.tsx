@@ -35,7 +35,12 @@ export function TabLimpezaDados() {
         p_incluir_agendas_inativas: incluirAgendasInativas,
       });
 
-      if (rpcError) throw rpcError;
+      if (rpcError) {
+        const details = [rpcError.message, rpcError.code, rpcError.details, rpcError.hint]
+          .filter(Boolean)
+          .join(' | ');
+        throw new Error(details || 'Falha na RPC limpar_dados_teste.');
+      }
 
       const payload = (data || {}) as Record<string, number>;
       const res: CleanResult[] = [];
@@ -56,10 +61,10 @@ export function TabLimpezaDados() {
       setStep('idle');
     } catch (err: unknown) {
       const msg =
-        err && typeof err === 'object' && 'message' in err && typeof (err as { message: unknown }).message === 'string'
-          ? (err as { message: string }).message
-          : err instanceof Error
-            ? err.message
+        err instanceof Error
+          ? err.message
+          : err && typeof err === 'object' && 'message' in err
+            ? String((err as { message: unknown }).message)
             : 'Erro ao limpar dados. Verifique se o patch v4.5 foi aplicado.';
       setError(msg);
       setStep('idle');

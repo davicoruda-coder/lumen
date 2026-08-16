@@ -234,7 +234,7 @@ export function TabGeral() {
                   <Upload className="w-4 h-4 mr-2" />
                   Upload (Máx 2MB)
                 </Button>
-                <p className="text-xs text-text-muted">Formatos: PNG, JPG ou SVG.</p>
+                <p className="text-xs text-text-muted">Formatos: PNG, JPG ou WebP.</p>
               </div>
             </div>
           </div>
