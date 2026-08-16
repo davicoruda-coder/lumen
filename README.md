@@ -6,6 +6,42 @@ interface responsiva, substituindo planilhas e ferramentas isoladas.
 
 **Aplicação em produção:** [lumen.davicosystems.ia.br](https://lumen.davicosystems.ia.br)
 
+## Interface
+
+Capturas do ambiente de demonstração em produção.
+
+### Dashboard — indicadores do período
+
+![Dashboard Visão Geral](docs/screenshots/visao-geral.png)
+
+### CRM — pipeline de leads em Kanban
+
+![CRM Pipeline](docs/screenshots/crm.png)
+
+### Cadastro — leads e clientes
+
+![Cadastro de pacientes](docs/screenshots/cadastro.png)
+
+### Agenda — grade semanal multiprofissional
+
+![Agenda de atendimentos](docs/screenshots/agenda.png)
+
+### Financeiro — receitas, despesas e saldo
+
+![Módulo financeiro](docs/screenshots/financeiro.png)
+
+### Personalização — tema e identidade visual
+
+![Tema escuro e cores white-label](docs/screenshots/personalizacao.png)
+
+![Dashboard em tema escuro](docs/screenshots/visao-geral-escuro.png)
+
+### Mobile — PWA responsiva
+
+| Dashboard | Agenda |
+| --- | --- |
+| ![Dashboard no celular](docs/screenshots/mobile-visao-geral.png) | ![Agenda no celular](docs/screenshots/mobile-agenda.png) |
+
 ## Problema que o projeto resolve
 
 Clínicas pequenas e médias costumam manter agenda, contatos comerciais,
