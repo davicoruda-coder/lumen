@@ -82,9 +82,8 @@ export function TabUsuarios() {
         
       if (usersError) throw usersError;
 
-      const { data: emailsData } = await supabase
-        .from('auth_users')
-        .select('id, email, nome');
+      const { data: emailsData, error: emailsError } = await supabase.rpc('list_team_auth_users');
+      if (emailsError) throw emailsError;
       
       // Criar mapa de emails e nomes por id
       const emailMap = new Map((emailsData || []).map((entry: { id: string; email: string | null }) => [entry.id, entry.email]));

@@ -46,7 +46,7 @@ export function TabAgendas() {
       const [agendasRes, usersRes, emailsRes, inactiveRes] = await Promise.all([
         supabase.from('agendas').select('*').eq('ativo', true).order('nome', { ascending: true }),
         supabase.from('users').select('id, role'),
-        supabase.from('auth_users').select('id, email'),
+        supabase.rpc('list_team_auth_users'),
         isAdmin ? supabase.from('agendas').select('*').eq('ativo', false).order('nome', { ascending: true }) : Promise.resolve({ data: [] })
       ]);
         

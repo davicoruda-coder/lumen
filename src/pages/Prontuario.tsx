@@ -8,6 +8,7 @@ import { cn, calculateAge, displayCPF, formatBirthDate } from '../lib/utils';
 import { Search, Plus, ClipboardList, User, AlertTriangle, Calendar, FileText, Image, X, ChevronDown, ChevronUp, Edit2, Trash2, Camera } from 'lucide-react';
 import { FileUpload } from '../components/ui/FileUpload';
 import { ModalDocumento } from '../components/prontuario/ModalDocumento';
+import { fichaClinicaSchema, formatZodError } from '../lib/validation';
 
 interface FichaClinica {
   id: string;
@@ -107,7 +108,7 @@ export function Prontuario() {
           .map(f => f.paciente_id);
         if (leadIds.length > 0) {
           const { data: leadsData } = await supabase
-            .from('leads_estetica')
+            .from('leads_estetica_safe')
             .select('id, cpf, data_nascimento')
             .in('id', leadIds);
           const map: Record<string, { cpf: string | null; data_nascimento: string | null }> = {};
@@ -162,7 +163,7 @@ export function Prontuario() {
 
     const abrirNovaFichaDoLead = async () => {
       const { data: lead } = await supabase
-        .from('leads_estetica')
+        .from('leads_estetica_safe')
         .select('nome_lead, whatsapp_lead')
         .eq('id', targetId)
         .maybeSingle();
@@ -183,11 +184,19 @@ export function Prontuario() {
   }, [targetId, fichas, loading]);
 
   const salvarFicha = async () => {
-    const payload = {
-      nome_paciente: fNome, whatsapp_paciente: fWhats,
-      alergias: fAlergias || null, medicamentos_uso: fMedicamentos || null,
-      historico_medico: fHistorico || null, observacoes_gerais: fObs || null,
-    };
+    const parsed = fichaClinicaSchema.safeParse({
+      nome_paciente: fNome,
+      whatsapp_paciente: fWhats,
+      alergias: fAlergias || null,
+      medicamentos_uso: fMedicamentos || null,
+      historico_medico: fHistorico || null,
+      observacoes_gerais: fObs || null,
+    });
+    if (!parsed.success) {
+      alert(formatZodError(parsed.error));
+      return;
+    }
+    const payload = parsed.data;
 
     if (editandoFicha) {
       await supabase.from('fichas_clinicas').update(payload).eq('id', editandoFicha.id);

@@ -73,20 +73,20 @@ export function ModalDocumento({ fichaId, nomePaciente, onClose, onSuccess }: Mo
           return;
         }
 
-        const dataUrl = sigPad.current?.getTrimmedCanvas().toDataURL('image/png') || '';
-        const base64 = dataUrl.split(',')[1];
-        const filePath = `${fichaId}/${crypto.randomUUID()}.png`;
+        try {
+          const dataUrl = sigPad.current?.getTrimmedCanvas().toDataURL('image/png') || '';
+          const base64 = dataUrl.split(',')[1];
+          const binary = decode(base64);
+          const blob = new Blob([binary], { type: 'image/png' });
 
-        const { error: uploadError } = await supabase.storage
-          .from('assinaturas')
-          .upload(filePath, decode(base64), { contentType: 'image/png' });
-
-        if (uploadError) {
+          const { secureUpload } = await import('../../lib/secureUpload');
+          const uploaded = await secureUpload('assinaturas', blob, fichaId, 'assinatura.png');
+          assinatura_url = uploaded.path;
+        } catch {
           alert('Erro ao salvar assinatura.');
           setSaving(false);
           return;
         }
-        assinatura_url = filePath;
       }
     }
 

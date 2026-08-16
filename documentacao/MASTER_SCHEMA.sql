@@ -1,13 +1,14 @@
 -- =========================================================================
 -- MASTER SCHEMA: ELLEGANCE CLÍNICA INTEGRADA
--- Versão: 3.5 (Consolidado com 27 tabelas de produção)
--- Data: Jun/2026
+-- Versão: 3.6 (Hardening v4.5 — RLS por agenda, CPF server-side, uploads seguros)
+-- Data: Ago/2026
 --
 -- LGPD / Dados sensíveis (campos em leads_estetica: cpf, data_nascimento):
--- A política de exibição é aplicada no frontend (RBAC), não via views SQL.
--- Especialistas: data_nascimento visível; CPF mascarado na UI.
--- Gestores (owner/admin/superadmin/gestor): acesso ao CPF completo onde necessário.
--- Nenhuma alteração de coluna é necessária para essa regra.
+-- CPF mascarado no servidor via views leads_estetica_safe / agendamentos_estetica_safe.
+-- Especialista: acesso somente a agendas com usuario_id = auth.uid() e leads/fichas vinculados.
+-- Gestores (owner/admin/superadmin/gestor): acesso clínico amplo + CPF completo.
+-- Limpeza de dados: RPC limpar_dados_teste() exclusiva de superadmin.
+-- Uploads: Edge Function secure-upload (sem INSERT direto nos buckets clínicos).
 --
 -- CHANGELOG v3.1 (31/Mai/2026):
 --   - Campo whatsapp_lead da tabela agendamentos_estetica agora é preenchido
@@ -133,15 +134,63 @@ BEGIN
 END;
 $function$;
 
--- 2.3 VIEW SEGURA DE AUTH (Para exibição segura de e-mails e nomes em listagens de equipe)
--- v3.4: inclui campo 'nome' extraído de raw_user_meta_data para exibição na lista de Usuários
+-- 2.3 Helpers de autorização (hardening v4.5)
+CREATE OR REPLACE FUNCTION public.can_view_full_cpf()
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$
+  SELECT public.current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor');
+$$;
+CREATE OR REPLACE FUNCTION public.is_clinical_staff()
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$
+  SELECT public.current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista');
+$$;
+CREATE OR REPLACE FUNCTION public.owns_agenda(p_agenda_id uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$
+  SELECT EXISTS (SELECT 1 FROM public.agendas a WHERE a.id = p_agenda_id AND a.usuario_id = auth.uid());
+$$;
+CREATE OR REPLACE FUNCTION public.especialista_has_lead_access(p_lead_id uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.agendamentos_estetica ae
+    JOIN public.agendas a ON a.id = ae.agenda_id
+    WHERE ae.lead_id = p_lead_id AND a.usuario_id = auth.uid()
+  );
+$$;
+CREATE OR REPLACE FUNCTION public.especialista_has_ficha_access(p_ficha_id uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.fichas_clinicas f
+    WHERE f.id = p_ficha_id AND public.especialista_has_lead_access(f.paciente_id)
+  );
+$$;
+CREATE OR REPLACE FUNCTION public.mask_cpf(p_cpf text)
+RETURNS text LANGUAGE sql IMMUTABLE AS $$
+  SELECT CASE WHEN p_cpf IS NULL OR btrim(p_cpf) = '' THEN NULL ELSE '***.***.***-**' END;
+$$;
+
+-- 2.4 VIEW legacy auth_users (sem GRANT amplo — use list_team_auth_users)
 CREATE OR REPLACE VIEW public.auth_users AS
-SELECT 
+SELECT
     id,
     email,
     (raw_user_meta_data->>'nome')::text AS nome
 FROM auth.users;
-GRANT SELECT ON public.auth_users TO authenticated;
+REVOKE ALL ON public.auth_users FROM PUBLIC, anon, authenticated;
+
+CREATE OR REPLACE FUNCTION public.list_team_auth_users()
+RETURNS TABLE (id uuid, email text, nome text)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public', 'auth' AS $$
+BEGIN
+  IF public.current_user_role() NOT IN ('superadmin', 'owner', 'admin', 'gestor') THEN
+    RAISE EXCEPTION 'Sem permissão para listar usuários da equipe.';
+  END IF;
+  RETURN QUERY
+  SELECT u.id, u.email::text, (u.raw_user_meta_data->>'nome')::text
+  FROM auth.users u
+  INNER JOIN public.users pu ON pu.id = u.id
+  ORDER BY u.created_at DESC NULLS LAST;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION public.list_team_auth_users() TO authenticated;
 
 -- =========================================================================
 -- 3. DEFINIÇÃO DAS 27 TABELAS DO SISTEMA
@@ -694,12 +743,7 @@ ON CONFLICT (id) DO NOTHING;
 -- 6.1 POLÍTICAS DE RLS PARA OS BUCKETS
 -- BUCKET: avatars
 DROP POLICY IF EXISTS "Permitir upload de avatares para autenticados" ON storage.objects;
-CREATE POLICY "Permitir upload de avatares para autenticados" ON storage.objects
-FOR INSERT TO authenticated
-WITH CHECK (
-  bucket_id = 'avatars'
-  AND name LIKE ((select auth.uid())::text || '-%')
-);
+-- Upload de avatares via Edge Function secure-upload (service_role)
 DROP POLICY IF EXISTS "Permitir leitura de avatares publica" ON storage.objects;
 CREATE POLICY "Permitir leitura de avatares publica" ON storage.objects FOR SELECT TO public USING (bucket_id = 'avatars');
 DROP POLICY IF EXISTS "Permitir exclusao de avatares pelo dono" ON storage.objects;
@@ -712,12 +756,7 @@ USING (
 
 -- BUCKET: clinic-assets
 DROP POLICY IF EXISTS "Allow Auth Uploads" ON storage.objects;
-CREATE POLICY "Allow Auth Uploads" ON storage.objects
-FOR INSERT TO authenticated
-WITH CHECK (
-  bucket_id = 'clinic-assets'
-  AND public.current_user_role() IN ('superadmin', 'owner', 'admin')
-);
+-- Upload de clinic-assets via Edge Function secure-upload
 DROP POLICY IF EXISTS "Allow Public Select" ON storage.objects;
 CREATE POLICY "Allow Public Select" ON storage.objects FOR SELECT TO public USING (bucket_id = 'clinic-assets');
 DROP POLICY IF EXISTS "Allow Auth Deletes" ON storage.objects;
@@ -728,73 +767,85 @@ USING (
   AND public.current_user_role() IN ('superadmin', 'owner', 'admin')
 );
 
--- BUCKET: prontuarios
+-- BUCKET: prontuarios (leitura por ficha; upload via Edge Function secure-upload)
 DROP POLICY IF EXISTS "Permitir upload no prontuario para autenticados" ON storage.objects;
-CREATE POLICY "Permitir upload no prontuario para autenticados" ON storage.objects
-FOR INSERT TO authenticated
-WITH CHECK (
-  bucket_id = 'prontuarios'
-  AND public.current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista')
-);
 DROP POLICY IF EXISTS "Permitir leitura no prontuario para autenticados" ON storage.objects;
-CREATE POLICY "Permitir leitura no prontuario para autenticados" ON storage.objects
+DROP POLICY IF EXISTS "Permitir exclusao no prontuario para autenticados" ON storage.objects;
+DROP POLICY IF EXISTS "Leitura prontuario por ficha" ON storage.objects;
+DROP POLICY IF EXISTS "Exclusao prontuario admin" ON storage.objects;
+CREATE POLICY "Leitura prontuario por ficha" ON storage.objects
 FOR SELECT TO authenticated
 USING (
   bucket_id = 'prontuarios'
-  AND public.current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista')
+  AND (
+    public.check_is_admin()
+    OR (
+      public.current_user_role() = 'especialista'
+      AND public.especialista_has_ficha_access(public.storage_ficha_id(name))
+    )
+  )
 );
-DROP POLICY IF EXISTS "Permitir exclusao no prontuario para autenticados" ON storage.objects;
-CREATE POLICY "Permitir exclusao no prontuario para autenticados" ON storage.objects
+CREATE POLICY "Exclusao prontuario admin" ON storage.objects
 FOR DELETE TO authenticated
 USING (bucket_id = 'prontuarios' AND public.check_is_admin());
 
 -- BUCKET: assinaturas
 DROP POLICY IF EXISTS "Upload ass" ON storage.objects;
-CREATE POLICY "Upload ass" ON storage.objects
-FOR INSERT TO authenticated
-WITH CHECK (
-  bucket_id = 'assinaturas'
-  AND public.current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista')
-);
 DROP POLICY IF EXISTS "Leitura ass" ON storage.objects;
-CREATE POLICY "Leitura ass" ON storage.objects
+DROP POLICY IF EXISTS "Delete ass" ON storage.objects;
+DROP POLICY IF EXISTS "Leitura assinaturas por ficha" ON storage.objects;
+DROP POLICY IF EXISTS "Exclusao assinaturas admin" ON storage.objects;
+CREATE POLICY "Leitura assinaturas por ficha" ON storage.objects
 FOR SELECT TO authenticated
 USING (
   bucket_id = 'assinaturas'
-  AND public.current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista')
+  AND (
+    public.check_is_admin()
+    OR (
+      public.current_user_role() = 'especialista'
+      AND public.especialista_has_ficha_access(public.storage_ficha_id(name))
+    )
+  )
 );
-DROP POLICY IF EXISTS "Delete ass" ON storage.objects;
-CREATE POLICY "Delete ass" ON storage.objects
+CREATE POLICY "Exclusao assinaturas admin" ON storage.objects
 FOR DELETE TO authenticated
 USING (bucket_id = 'assinaturas' AND public.check_is_admin());
 
--- BUCKET: financeiro
+-- BUCKET: financeiro (sem INSERT direto — Edge Function)
 DROP POLICY IF EXISTS "Permitir upload no financeiro para autenticados" ON storage.objects;
-CREATE POLICY "Permitir upload no financeiro para autenticados" ON storage.objects
-FOR INSERT TO authenticated
-WITH CHECK (bucket_id = 'financeiro' AND public.check_is_admin());
 DROP POLICY IF EXISTS "Permitir leitura no financeiro para autenticados" ON storage.objects;
-CREATE POLICY "Permitir leitura no financeiro para autenticados" ON storage.objects
+DROP POLICY IF EXISTS "Permitir exclusao no financeiro para autenticados" ON storage.objects;
+DROP POLICY IF EXISTS "Leitura financeiro admin" ON storage.objects;
+DROP POLICY IF EXISTS "Exclusao financeiro admin" ON storage.objects;
+CREATE POLICY "Leitura financeiro admin" ON storage.objects
 FOR SELECT TO authenticated
 USING (bucket_id = 'financeiro' AND public.check_is_admin());
-DROP POLICY IF EXISTS "Permitir exclusao no financeiro para autenticados" ON storage.objects;
-CREATE POLICY "Permitir exclusao no financeiro para autenticados" ON storage.objects
+CREATE POLICY "Exclusao financeiro admin" ON storage.objects
 FOR DELETE TO authenticated
 USING (bucket_id = 'financeiro' AND public.check_is_admin());
 
 -- BUCKET: estoque
 DROP POLICY IF EXISTS "Permitir upload no estoque para autenticados" ON storage.objects;
-CREATE POLICY "Permitir upload no estoque para autenticados" ON storage.objects
-FOR INSERT TO authenticated
-WITH CHECK (bucket_id = 'estoque' AND public.check_is_admin());
 DROP POLICY IF EXISTS "Permitir leitura no estoque para autenticados" ON storage.objects;
-CREATE POLICY "Permitir leitura no estoque para autenticados" ON storage.objects
+DROP POLICY IF EXISTS "Permitir exclusao no estoque para autenticados" ON storage.objects;
+DROP POLICY IF EXISTS "Leitura estoque admin" ON storage.objects;
+DROP POLICY IF EXISTS "Exclusao estoque admin" ON storage.objects;
+CREATE POLICY "Leitura estoque admin" ON storage.objects
 FOR SELECT TO authenticated
 USING (bucket_id = 'estoque' AND public.check_is_admin());
-DROP POLICY IF EXISTS "Permitir exclusao no estoque para autenticados" ON storage.objects;
-CREATE POLICY "Permitir exclusao no estoque para autenticados" ON storage.objects
+CREATE POLICY "Exclusao estoque admin" ON storage.objects
 FOR DELETE TO authenticated
 USING (bucket_id = 'estoque' AND public.check_is_admin());
+
+CREATE OR REPLACE FUNCTION public.storage_ficha_id(object_name text)
+RETURNS uuid LANGUAGE plpgsql IMMUTABLE AS $$
+DECLARE segment text;
+BEGIN
+  segment := split_part(object_name, '/', 1);
+  IF segment ~ '^[0-9a-fA-F-]{36}$' THEN RETURN segment::uuid; END IF;
+  RETURN NULL;
+END;
+$$;
 
 -- =========================================================================
 -- 7. POLÍTICAS DE RLS GRANULARES PARA TODAS AS 27 TABELAS
@@ -875,13 +926,19 @@ WITH CHECK (
 
 -- 7.2 Políticas: clinic_config & clinic_hours & clinic_closures
 DROP POLICY IF EXISTS "clinic_config_select_all_authenticated" ON public.clinic_config;
-CREATE POLICY "clinic_config_select_all_authenticated" ON public.clinic_config FOR SELECT TO anon, authenticated USING (true);
+DROP POLICY IF EXISTS "clinic_config_select_authenticated" ON public.clinic_config;
+CREATE POLICY "clinic_config_select_authenticated" ON public.clinic_config FOR SELECT TO authenticated
+USING (public.is_clinical_staff() OR public.check_is_admin());
 DROP POLICY IF EXISTS "clinic_config_insert_admin_only" ON public.clinic_config;
 CREATE POLICY "clinic_config_insert_admin_only" ON public.clinic_config FOR INSERT TO authenticated WITH CHECK (check_is_admin());
 DROP POLICY IF EXISTS "clinic_config_update_admin_only" ON public.clinic_config;
 CREATE POLICY "clinic_config_update_admin_only" ON public.clinic_config FOR UPDATE TO authenticated USING (check_is_admin()) WITH CHECK (check_is_admin());
 DROP POLICY IF EXISTS "clinic_config_delete_admin_only" ON public.clinic_config;
 CREATE POLICY "clinic_config_delete_admin_only" ON public.clinic_config FOR DELETE TO authenticated USING (check_is_admin());
+
+CREATE OR REPLACE VIEW public.clinic_branding_public AS
+SELECT id, nome, logo_url, tema, tema_cor, plano FROM public.clinic_config WHERE id = 1;
+GRANT SELECT ON public.clinic_branding_public TO anon, authenticated;
 
 DROP POLICY IF EXISTS "somente_admin_clinic_hours" ON public.clinic_hours;
 CREATE POLICY "somente_admin_clinic_hours" ON public.clinic_hours FOR ALL TO authenticated
@@ -903,10 +960,11 @@ DROP POLICY IF EXISTS "autenticado_update" ON public.agendas;
 DROP POLICY IF EXISTS "somente_admin_delete_agendas" ON public.agendas;
 DROP POLICY IF EXISTS "Equipe clinica le agendas" ON public.agendas;
 DROP POLICY IF EXISTS "Admins gerenciam agendas" ON public.agendas;
-CREATE POLICY "Equipe clinica le agendas" ON public.agendas FOR SELECT TO authenticated
-USING (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
+DROP POLICY IF EXISTS "Especialista le propria agenda" ON public.agendas;
 CREATE POLICY "Admins gerenciam agendas" ON public.agendas FOR ALL TO authenticated
 USING (check_is_admin()) WITH CHECK (check_is_admin());
+CREATE POLICY "Especialista le propria agenda" ON public.agendas FOR SELECT TO authenticated
+USING (current_user_role() = 'especialista' AND usuario_id = (select auth.uid()));
 
 DROP POLICY IF EXISTS "autenticado_insert" ON public.agenda_hours;
 DROP POLICY IF EXISTS "autenticado_select" ON public.agenda_hours;
@@ -916,10 +974,11 @@ CREATE POLICY "service_role_select_agenda_hours" ON public.agenda_hours FOR SELE
 DROP POLICY IF EXISTS "somente_admin_delete_agenda_hours" ON public.agenda_hours;
 DROP POLICY IF EXISTS "Equipe clinica le horarios" ON public.agenda_hours;
 DROP POLICY IF EXISTS "Admins gerenciam horarios" ON public.agenda_hours;
-CREATE POLICY "Equipe clinica le horarios" ON public.agenda_hours FOR SELECT TO authenticated
-USING (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
+DROP POLICY IF EXISTS "Especialista le horarios propria agenda" ON public.agenda_hours;
 CREATE POLICY "Admins gerenciam horarios" ON public.agenda_hours FOR ALL TO authenticated
 USING (check_is_admin()) WITH CHECK (check_is_admin());
+CREATE POLICY "Especialista le horarios propria agenda" ON public.agenda_hours FOR SELECT TO authenticated
+USING (current_user_role() = 'especialista' AND owns_agenda(agenda_id));
 
 DROP POLICY IF EXISTS "autenticado_insert" ON public.agendamentos_estetica;
 DROP POLICY IF EXISTS "autenticado_select" ON public.agendamentos_estetica;
@@ -927,10 +986,11 @@ DROP POLICY IF EXISTS "autenticado_update" ON public.agendamentos_estetica;
 DROP POLICY IF EXISTS "somente_admin_delete_agendamentos" ON public.agendamentos_estetica;
 DROP POLICY IF EXISTS "Equipe clinica le agendamentos" ON public.agendamentos_estetica;
 DROP POLICY IF EXISTS "Admins gerenciam agendamentos" ON public.agendamentos_estetica;
-CREATE POLICY "Equipe clinica le agendamentos" ON public.agendamentos_estetica FOR SELECT TO authenticated
-USING (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
+DROP POLICY IF EXISTS "Especialista le agendamentos propria agenda" ON public.agendamentos_estetica;
 CREATE POLICY "Admins gerenciam agendamentos" ON public.agendamentos_estetica FOR ALL TO authenticated
 USING (check_is_admin()) WITH CHECK (check_is_admin());
+CREATE POLICY "Especialista le agendamentos propria agenda" ON public.agendamentos_estetica FOR SELECT TO authenticated
+USING (current_user_role() = 'especialista' AND owns_agenda(agenda_id));
 
 -- 7.4 Políticas: leads_estetica & lead_notes
 DROP POLICY IF EXISTS "autenticado_insert" ON public.leads_estetica;
@@ -939,10 +999,11 @@ DROP POLICY IF EXISTS "autenticado_update" ON public.leads_estetica;
 DROP POLICY IF EXISTS "somente_admin_delete_leads" ON public.leads_estetica;
 DROP POLICY IF EXISTS "Equipe clinica le leads" ON public.leads_estetica;
 DROP POLICY IF EXISTS "Admins gerenciam leads" ON public.leads_estetica;
-CREATE POLICY "Equipe clinica le leads" ON public.leads_estetica FOR SELECT TO authenticated
-USING (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
+DROP POLICY IF EXISTS "Especialista le leads da propria agenda" ON public.leads_estetica;
 CREATE POLICY "Admins gerenciam leads" ON public.leads_estetica FOR ALL TO authenticated
 USING (check_is_admin()) WITH CHECK (check_is_admin());
+CREATE POLICY "Especialista le leads da propria agenda" ON public.leads_estetica FOR SELECT TO authenticated
+USING (current_user_role() = 'especialista' AND especialista_has_lead_access(id));
 
 DROP POLICY IF EXISTS "Permitir inserção para usuários autenticados" ON public.lead_notes;
 DROP POLICY IF EXISTS "Permitir leitura para usuários autenticados" ON public.lead_notes;
@@ -1005,12 +1066,24 @@ DROP POLICY IF EXISTS "Clinicos criam fichas" ON public.fichas_clinicas;
 DROP POLICY IF EXISTS "Clinicos atualizam fichas" ON public.fichas_clinicas;
 DROP POLICY IF EXISTS "Admins excluem fichas" ON public.fichas_clinicas;
 CREATE POLICY "Clinicos leem fichas" ON public.fichas_clinicas FOR SELECT TO authenticated
-USING (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
+USING (
+  check_is_admin()
+  OR (current_user_role() = 'especialista' AND especialista_has_lead_access(paciente_id))
+);
 CREATE POLICY "Clinicos criam fichas" ON public.fichas_clinicas FOR INSERT TO authenticated
-WITH CHECK (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
+WITH CHECK (
+  check_is_admin()
+  OR (current_user_role() = 'especialista' AND especialista_has_lead_access(paciente_id))
+);
 CREATE POLICY "Clinicos atualizam fichas" ON public.fichas_clinicas FOR UPDATE TO authenticated
-USING (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'))
-WITH CHECK (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
+USING (
+  check_is_admin()
+  OR (current_user_role() = 'especialista' AND especialista_has_lead_access(paciente_id))
+)
+WITH CHECK (
+  check_is_admin()
+  OR (current_user_role() = 'especialista' AND especialista_has_lead_access(paciente_id))
+);
 CREATE POLICY "Admins excluem fichas" ON public.fichas_clinicas FOR DELETE TO authenticated
 USING (check_is_admin());
 
@@ -1020,12 +1093,12 @@ DROP POLICY IF EXISTS "Clinicos criam anamneses" ON public.anamneses;
 DROP POLICY IF EXISTS "Clinicos atualizam anamneses" ON public.anamneses;
 DROP POLICY IF EXISTS "Admins excluem anamneses" ON public.anamneses;
 CREATE POLICY "Clinicos leem anamneses" ON public.anamneses FOR SELECT TO authenticated
-USING (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
+USING (check_is_admin() OR (current_user_role() = 'especialista' AND especialista_has_ficha_access(ficha_id)));
 CREATE POLICY "Clinicos criam anamneses" ON public.anamneses FOR INSERT TO authenticated
-WITH CHECK (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
+WITH CHECK (check_is_admin() OR (current_user_role() = 'especialista' AND especialista_has_ficha_access(ficha_id)));
 CREATE POLICY "Clinicos atualizam anamneses" ON public.anamneses FOR UPDATE TO authenticated
-USING (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'))
-WITH CHECK (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
+USING (check_is_admin() OR (current_user_role() = 'especialista' AND especialista_has_ficha_access(ficha_id)))
+WITH CHECK (check_is_admin() OR (current_user_role() = 'especialista' AND especialista_has_ficha_access(ficha_id)));
 CREATE POLICY "Admins excluem anamneses" ON public.anamneses FOR DELETE TO authenticated
 USING (check_is_admin());
 
@@ -1034,9 +1107,9 @@ DROP POLICY IF EXISTS "Clinicos leem evolucoes" ON public.evolucoes;
 DROP POLICY IF EXISTS "Clinicos criam evolucoes" ON public.evolucoes;
 DROP POLICY IF EXISTS "Admins excluem evolucoes" ON public.evolucoes;
 CREATE POLICY "Clinicos leem evolucoes" ON public.evolucoes FOR SELECT TO authenticated
-USING (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
+USING (check_is_admin() OR (current_user_role() = 'especialista' AND especialista_has_ficha_access(ficha_id)));
 CREATE POLICY "Clinicos criam evolucoes" ON public.evolucoes FOR INSERT TO authenticated
-WITH CHECK (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
+WITH CHECK (check_is_admin() OR (current_user_role() = 'especialista' AND especialista_has_ficha_access(ficha_id)));
 CREATE POLICY "Admins excluem evolucoes" ON public.evolucoes FOR DELETE TO authenticated
 USING (check_is_admin());
 
@@ -1045,9 +1118,9 @@ DROP POLICY IF EXISTS "Clinicos leem galeria" ON public.galeria_paciente;
 DROP POLICY IF EXISTS "Clinicos criam galeria" ON public.galeria_paciente;
 DROP POLICY IF EXISTS "Admins excluem galeria" ON public.galeria_paciente;
 CREATE POLICY "Clinicos leem galeria" ON public.galeria_paciente FOR SELECT TO authenticated
-USING (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
+USING (check_is_admin() OR (current_user_role() = 'especialista' AND especialista_has_ficha_access(ficha_id)));
 CREATE POLICY "Clinicos criam galeria" ON public.galeria_paciente FOR INSERT TO authenticated
-WITH CHECK (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
+WITH CHECK (check_is_admin() OR (current_user_role() = 'especialista' AND especialista_has_ficha_access(ficha_id)));
 CREATE POLICY "Admins excluem galeria" ON public.galeria_paciente FOR DELETE TO authenticated
 USING (check_is_admin());
 
@@ -1070,9 +1143,9 @@ DROP POLICY IF EXISTS "Clinicos leem documentos" ON public.documentos_pacientes;
 DROP POLICY IF EXISTS "Clinicos criam documentos" ON public.documentos_pacientes;
 DROP POLICY IF EXISTS "Admins excluem documentos" ON public.documentos_pacientes;
 CREATE POLICY "Clinicos leem documentos" ON public.documentos_pacientes FOR SELECT TO authenticated
-USING (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
+USING (check_is_admin() OR (current_user_role() = 'especialista' AND especialista_has_ficha_access(ficha_id)));
 CREATE POLICY "Clinicos criam documentos" ON public.documentos_pacientes FOR INSERT TO authenticated
-WITH CHECK (current_user_role() IN ('superadmin', 'owner', 'admin', 'gestor', 'especialista'));
+WITH CHECK (check_is_admin() OR (current_user_role() = 'especialista' AND especialista_has_ficha_access(ficha_id)));
 CREATE POLICY "Admins excluem documentos" ON public.documentos_pacientes FOR DELETE TO authenticated
 USING (check_is_admin());
 
@@ -1092,9 +1165,32 @@ USING (check_is_admin()) WITH CHECK (check_is_admin());
 
 -- 7.10 Políticas: nps_feedbacks
 DROP POLICY IF EXISTS "Acesso total nps" ON public.nps_feedbacks;
-CREATE POLICY "Acesso total nps" ON public.nps_feedbacks FOR ALL TO authenticated USING (((select auth.uid()) IS NOT NULL));
 DROP POLICY IF EXISTS "Insercao nps anonima" ON public.nps_feedbacks;
-CREATE POLICY "Insercao nps anonima" ON public.nps_feedbacks FOR INSERT TO anon WITH CHECK (true);
+DROP POLICY IF EXISTS "Admins gerenciam nps" ON public.nps_feedbacks;
+DROP POLICY IF EXISTS "Equipe clinica cria nps" ON public.nps_feedbacks;
+CREATE POLICY "Admins gerenciam nps" ON public.nps_feedbacks FOR ALL TO authenticated
+USING (check_is_admin()) WITH CHECK (check_is_admin());
+CREATE POLICY "Equipe clinica cria nps" ON public.nps_feedbacks FOR INSERT TO authenticated
+WITH CHECK (is_clinical_staff());
+
+-- Views de leitura com CPF mascarado (usar no frontend para SELECT)
+CREATE OR REPLACE VIEW public.leads_estetica_safe WITH (security_invoker = true) AS
+SELECT id, whatsapp_lead, inicio_atendimento, nome_lead, motivo_contato, procedimento_interesse,
+  resumo_conversa, status, ultima_mensagem, follow_up_1, follow_up_2, follow_up_3, data_agendamento,
+  agendamento_criado_em, id_agendamento, observacoes, data_nascimento, genero, valor_pago,
+  data_primeira_visita,
+  CASE WHEN can_view_full_cpf() THEN cpf ELSE mask_cpf(cpf) END AS cpf,
+  nota_nps
+FROM public.leads_estetica;
+GRANT SELECT ON public.leads_estetica_safe TO authenticated;
+
+CREATE OR REPLACE VIEW public.agendamentos_estetica_safe WITH (security_invoker = true) AS
+SELECT id, agenda_id, lead_id, procedimento_nome, nome_lead, whatsapp_lead, data_hora_inicio,
+  data_hora_fim, status, observacoes, created_at,
+  CASE WHEN can_view_full_cpf() THEN cpf_lead ELSE mask_cpf(cpf_lead) END AS cpf_lead,
+  data_nascimento_lead
+FROM public.agendamentos_estetica;
+GRANT SELECT ON public.agendamentos_estetica_safe TO authenticated;
 
 -- =========================================================================
 -- 8. DADOS INICIAIS (Primeiro Setup da Clínica)

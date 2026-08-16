@@ -1,15 +1,18 @@
 import React, { useCallback, useState, useRef } from 'react';
-import { supabase } from '../../lib/supabase';
-import { UploadCloud, X, File as FileIcon, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { UploadCloud, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { compressImage } from '../../lib/imageCompressor';
+import { secureUpload, type SecureBucket } from '../../lib/secureUpload';
+
+const DEFAULT_ACCEPT = 'image/jpeg,image/png,image/webp,application/pdf';
+const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
 
 export interface FileUploadProps {
-  bucket: 'prontuarios' | 'financeiro' | 'estoque';
-  folderPath?: string; // Ex: paciente_id/ ou lancamento_id/
+  bucket: Extract<SecureBucket, 'prontuarios' | 'financeiro' | 'estoque'>;
+  folderPath?: string;
   onUploadSuccess: (url: string, path: string) => void;
   maxSizeMB?: number;
-  accept?: string; // Ex: 'image/*,application/pdf'
+  accept?: string;
   label?: string;
   className?: string;
 }
@@ -19,7 +22,7 @@ export function FileUpload({
   folderPath = '',
   onUploadSuccess,
   maxSizeMB = 15,
-  accept = 'image/*,application/pdf',
+  accept = DEFAULT_ACCEPT,
   label = 'Clique ou arraste um arquivo aqui',
   className
 }: FileUploadProps) {
@@ -28,7 +31,6 @@ export function FileUpload({
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
@@ -48,25 +50,27 @@ export function FileUpload({
     setProgress(5);
 
     try {
-      let fileToUpload = file;
+      if (file.type && !ALLOWED_MIME.has(file.type)) {
+        throw new Error('Tipo não permitido. Use JPEG, PNG, WebP ou PDF.');
+      }
+      if (file.type === 'image/svg+xml' || file.type === 'image/gif') {
+        throw new Error('SVG e GIF não são permitidos.');
+      }
 
-      // Compress if it is an image (excluding vector SVG and animated GIF to preserve their integrity)
+      let fileToUpload: Blob = file;
+      let uploadName = file.name;
+
       if (file.type.startsWith('image/') && file.type !== 'image/svg+xml' && file.type !== 'image/gif') {
         setProgress(15);
         try {
           const compressed = await compressImage(file);
-          fileToUpload = compressed instanceof File 
-            ? compressed 
-            : new File([compressed], file.name.replace(/\.[^/.]+$/, "") + (compressed.type === 'image/jpeg' ? '.jpg' : ''), { 
-                type: compressed.type,
-                lastModified: Date.now()
-              });
+          fileToUpload = compressed;
+          uploadName = file.name.replace(/\.[^/.]+$/, '') + (compressed.type === 'image/jpeg' ? '.jpg' : '.png');
         } catch {
-          // Falha na compactação — usa o arquivo original
+          // mantém original
         }
       }
 
-      // Validação de tamanho sobre o arquivo final (compactado ou original)
       const fileSizeMB = fileToUpload.size / (1024 * 1024);
       if (fileSizeMB > maxSizeMB) {
         setError(`O arquivo é muito grande (${fileSizeMB.toFixed(1)}MB). O limite é ${maxSizeMB}MB.`);
@@ -74,41 +78,22 @@ export function FileUpload({
         return;
       }
 
-      setProgress(30);
-
-      // Create a unique file name to avoid collisions
-      const fileExt = fileToUpload.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
-      const filePath = `${folderPath}${folderPath.endsWith('/') || folderPath === '' ? '' : '/'}${fileName}`;
-
-      // Upload the file to Supabase Storage
-      const { data, error: uploadError } = await supabase.storage
-        .from(bucket)
-        .upload(filePath, fileToUpload, {
-          cacheControl: '3600',
-          upsert: false,
-        });
-
-      if (uploadError) {
-        throw uploadError;
+      if (bucket === 'prontuarios' && !folderPath) {
+        throw new Error('Pasta da ficha clínica é obrigatória.');
       }
 
+      setProgress(40);
+      const result = await secureUpload(bucket, fileToUpload, folderPath, uploadName);
       setProgress(100);
       setSuccess(true);
-      
-      // We don't use getPublicUrl because our buckets are private.
-      // To view them, we'll need to use createSignedUrl when fetching, 
-      // but we can save the filePath in the database for now.
-      onUploadSuccess(filePath, data.path);
+      onUploadSuccess(result.path, result.path);
 
-      // Reset state after a delay
       setTimeout(() => {
         setSuccess(false);
         setProgress(0);
       }, 3000);
-
-    } catch (err: any) {
-      setError(err.message || 'Erro ao fazer upload do arquivo.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao fazer upload do arquivo.');
     } finally {
       setUploading(false);
     }
@@ -118,16 +103,15 @@ export function FileUpload({
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      validateAndUpload(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files?.[0]) {
+      void validateAndUpload(e.dataTransfer.files[0]);
     }
-  }, []);
+  }, [bucket, folderPath, maxSizeMB]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.preventDefault();
-    if (e.target.files && e.target.files[0]) {
-      validateAndUpload(e.target.files[0]);
+    if (e.target.files?.[0]) {
+      void validateAndUpload(e.target.files[0]);
     }
   };
 
@@ -161,7 +145,7 @@ export function FileUpload({
             <Loader2 className="w-8 h-8 text-primary animate-spin" />
             <div className="text-sm font-medium text-text-main">Enviando arquivo...</div>
             <div className="w-full max-w-xs bg-bg-base rounded-full h-1.5 mt-2 overflow-hidden">
-              <div 
+              <div
                 className="bg-primary h-1.5 rounded-full transition-all duration-300"
                 style={{ width: `${progress}%` }}
               />
@@ -190,7 +174,7 @@ export function FileUpload({
             <div className="text-center">
               <p className="text-sm font-medium text-text-main">{label}</p>
               <p className="text-xs text-text-muted mt-1">
-                Suporta: {accept.replace(/, /g, ', ')} (Max: {maxSizeMB}MB)
+                JPEG, PNG, WebP ou PDF (máx. {maxSizeMB}MB)
               </p>
             </div>
           </>

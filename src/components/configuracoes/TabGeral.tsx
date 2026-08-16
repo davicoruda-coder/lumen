@@ -64,23 +64,21 @@ export function TabGeral() {
     try {
       if (!e.target.files || e.target.files.length === 0) return;
       const file = e.target.files[0];
-      if (file.size > 15 * 1024 * 1024) throw new Error("A imagem deve ter no máximo 15MB.");
+      if (file.type === 'image/svg+xml' || file.type === 'image/gif') {
+        throw new Error('Use JPEG, PNG ou WebP (SVG não permitido).');
+      }
+      if (file.size > 2 * 1024 * 1024) throw new Error("A imagem deve ter no máximo 2MB.");
       
       setUploading(true);
       
-      // Compress the image before uploading
+      const { secureUpload } = await import('../../lib/secureUpload');
       const compressedBlob = await compressImage(file);
       const fileToUpload = compressedBlob instanceof File ? compressedBlob : new File([compressedBlob], file.name, { type: compressedBlob.type });
 
-      const fileExt = fileToUpload.name.split('.').pop();
-      const fileName = `logo-${Math.random()}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage.from('clinic-assets').upload(fileName, fileToUpload);
-      if (uploadError) throw uploadError;
-
-      const { data } = supabase.storage.from('clinic-assets').getPublicUrl(fileName);
+      const result = await secureUpload('clinic-assets', fileToUpload, '', fileToUpload.name);
+      if (!result.publicUrl) throw new Error('URL da logo não retornada.');
       
-      await supabase.from('clinic_config').update({ logo_url: data.publicUrl }).eq('id', 1);
+      await supabase.from('clinic_config').update({ logo_url: result.publicUrl }).eq('id', 1);
       await refreshClinic();
       
     } catch (error: any) {
@@ -221,7 +219,7 @@ export function TabGeral() {
               <div className="flex-1">
                 <input 
                   type="file" 
-                  accept="image/png, image/jpeg, image/svg+xml" 
+                  accept="image/png,image/jpeg,image/webp" 
                   className="hidden" 
                   ref={fileInputRef}
                   onChange={handleLogoUpload}

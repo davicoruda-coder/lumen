@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
-import { compressImage } from '../../lib/imageCompressor';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Avatar } from '../ui/Avatar';
@@ -50,28 +49,23 @@ export function TabPerfil() {
       }
 
       const file = event.target.files[0];
-      
-      // Compress the image before uploading
-      const compressedBlob = await compressImage(file);
-      const fileToUpload = compressedBlob instanceof File ? compressedBlob : new File([compressedBlob], file.name, { type: compressedBlob.type });
-
-      const fileExt = fileToUpload.name.split('.').pop();
-      const fileName = `${user?.id}-${Math.random()}.${fileExt}`;
-      const filePath = `${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, fileToUpload);
-
-      if (uploadError) {
-        throw uploadError;
+      if (file.type === 'image/svg+xml' || file.type === 'image/gif') {
+        throw new Error('Use JPEG, PNG ou WebP.');
       }
 
-      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      
-      setAvatarUrl(data.publicUrl);
+      const { secureUpload } = await import('../../lib/secureUpload');
+      const { compressImage } = await import('../../lib/imageCompressor');
+
+      const compressedBlob = await compressImage(file);
+      const fileToUpload = compressedBlob instanceof File
+        ? compressedBlob
+        : new File([compressedBlob], file.name, { type: compressedBlob.type });
+
+      const result = await secureUpload('avatars', fileToUpload, user?.id || '', fileToUpload.name);
+      if (!result.publicUrl) throw new Error('URL pública do avatar não retornada.');
+      setAvatarUrl(result.publicUrl);
     } catch (error: any) {
-      alert('Erro ao fazer upload da imagem. Certifique-se de que o bucket "avatars" existe no Supabase e está público.');
+      alert(error?.message || 'Erro ao fazer upload da imagem.');
     } finally {
       setUploading(false);
     }
@@ -103,7 +97,7 @@ export function TabPerfil() {
                 <input 
                   id="avatar-upload"
                   type="file" 
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp"
                   className="hidden"
                   onChange={uploadAvatar}
                   disabled={uploading}

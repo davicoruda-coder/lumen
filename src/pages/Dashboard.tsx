@@ -11,6 +11,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Avatar } from '../components/ui/Avatar';
 import { cn } from '../lib/utils';
+import { npsSchema, formatZodError } from '../lib/validation';
 import { 
   Calendar, Users, Target, UserCheck, Loader2,
   Smile, Meh, Frown, MessageSquare, Award, ChevronRight, Play, ExternalLink,
@@ -158,7 +159,7 @@ export function Dashboard() {
           .gte('data_hora_inicio', startStr)
           .lte('data_hora_inicio', endStr),
         supabase
-          .from('leads_estetica')
+          .from('leads_estetica_safe')
           .select('status, inicio_atendimento')
           .gte('inicio_atendimento', startStr)
           .lte('inicio_atendimento', endStr),
@@ -270,28 +271,22 @@ export function Dashboard() {
 
   const handleSaveNps = async (e: React.FormEvent) => {
     e.preventDefault();
-    const nome = npsForm.cliente_nome.trim();
-    if (!nome) {
-      setNpsFormMsg('Informe o nome do paciente.');
-      return;
-    }
-    const nota = Number(npsForm.nota);
-    if (!Number.isFinite(nota) || nota < 0 || nota > 10) {
-      setNpsFormMsg('A nota deve ser um número de 0 a 10.');
+    const parsed = npsSchema.safeParse({
+      cliente_nome: npsForm.cliente_nome,
+      nota: Number(npsForm.nota),
+      procedimento: npsForm.procedimento.trim() || null,
+      comentario: npsForm.comentario.trim() || null,
+      whatsapp_lead: npsForm.whatsapp_lead || null,
+    });
+    if (!parsed.success) {
+      setNpsFormMsg(formatZodError(parsed.error));
       return;
     }
 
     setSavingNps(true);
     setNpsFormMsg(null);
     try {
-      const whatsapp = npsForm.whatsapp_lead.replace(/\D/g, '') || null;
-      const { error } = await supabase.from('nps_feedbacks').insert({
-        cliente_nome: nome,
-        nota,
-        procedimento: npsForm.procedimento.trim() || null,
-        comentario: npsForm.comentario.trim() || null,
-        whatsapp_lead: whatsapp,
-      });
+      const { error } = await supabase.from('nps_feedbacks').insert(parsed.data);
       if (error) throw error;
       setNpsForm({ cliente_nome: '', nota: 10, procedimento: '', comentario: '', whatsapp_lead: '' });
       setNpsFormMsg('Avaliação registrada.');

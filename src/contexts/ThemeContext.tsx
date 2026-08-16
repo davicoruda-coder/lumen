@@ -115,7 +115,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const fetchGlobalTheme = async () => {
       try {
         const { data, error } = await supabase
-          .from('clinic_config')
+          .from('clinic_branding_public')
           .select('tema_cor')
           .limit(1)
           .single();

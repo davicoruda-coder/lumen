@@ -11,6 +11,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn, formatCPF, calculateAge, canViewFullCPF, displayCPF, formatBirthDate } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { leadUpdateSchema, formatZodError } from '../lib/validation';
 
 type TabType = 'leads' | 'clientes';
 type FilterType = 'hoje' | 'ontem' | '7dias' | '14semanas' | 'mes' | 'ano' | 'custom';
@@ -91,7 +92,7 @@ export function LeadsClientes() {
 
     try {
       let activeQuery = supabase
-        .from('leads_estetica')
+        .from('leads_estetica_safe')
         .select(LEAD_LIST_FIELDS, { count: 'exact' })
         .gte('inicio_atendimento', startStr)
         .lte('inicio_atendimento', endStr)
@@ -106,7 +107,7 @@ export function LeadsClientes() {
         : activeQuery.neq('status', 'compareceu');
 
       let otherCountQuery = supabase
-        .from('leads_estetica')
+        .from('leads_estetica_safe')
         .select('id', { count: 'exact', head: true })
         .gte('inicio_atendimento', startStr)
         .lte('inicio_atendimento', endStr);
@@ -180,7 +181,7 @@ export function LeadsClientes() {
 
     for (let from = 0; ; from += EXPORT_BATCH_SIZE) {
       let query = supabase
-        .from('leads_estetica')
+        .from('leads_estetica_safe')
         .select(LEAD_LIST_FIELDS)
         .gte('inicio_atendimento', startStr)
         .lte('inicio_atendimento', endStr)
@@ -607,13 +608,18 @@ function DrawerDetail({ isOpen, onClose, type, data, navigate, onRefresh }: any)
   const handleSave = async () => {
     setLoading(true);
     try {
-      const { error } = await supabase.from('leads_estetica').update({
+      const parsed = leadUpdateSchema.safeParse({
         nome_lead: formData.nome_lead,
         whatsapp_lead: formData.whatsapp_lead,
         cpf: formData.cpf || null,
         data_nascimento: formData.data_nascimento || null,
-        observacoes: formData.observacoes
-      }).eq('id', lead.id);
+        observacoes: formData.observacoes || null,
+      });
+      if (!parsed.success) {
+        alert(formatZodError(parsed.error));
+        return;
+      }
+      const { error } = await supabase.from('leads_estetica').update(parsed.data).eq('id', lead.id);
       
       if (error) throw error;
       onRefresh();

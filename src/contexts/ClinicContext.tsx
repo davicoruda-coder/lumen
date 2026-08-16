@@ -19,7 +19,7 @@ export function ClinicProvider({ children }: { children: React.ReactNode }) {
   const refreshClinic = async () => {
     try {
       const { data, error } = await supabase
-        .from('clinic_config')
+        .from('clinic_branding_public')
         .select('nome, logo_url, plano')
         .limit(1);
 

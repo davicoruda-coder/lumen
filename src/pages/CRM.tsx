@@ -13,6 +13,7 @@ import { Plus, X, Phone, Clock, FileText, Loader2, Calendar, Edit2, Check, Send,
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { HScrollArea } from '../components/ui/HScrollArea';
+import { leadCreateSchema, leadUpdateSchema, formatZodError } from '../lib/validation';
 
 /** Colunas do funil clínico. Status legados de automação são agrupados aqui. */
 const COLUMNS = [
@@ -55,7 +56,7 @@ export function CRM() {
       const results = await Promise.all(
         COLUMNS.map(async (column) => {
           const { data, count, error } = await supabase
-            .from('leads_estetica')
+            .from('leads_estetica_safe')
             .select(CRM_LEAD_FIELDS, { count: 'exact' })
             .in('status', [...column.statuses])
             .order('inicio_atendimento', { ascending: false, nullsFirst: false })
@@ -95,7 +96,7 @@ export function CRM() {
     try {
       setLoadingMoreColumn(columnId);
       const { data, count, error } = await supabase
-        .from('leads_estetica')
+        .from('leads_estetica_safe')
         .select(CRM_LEAD_FIELDS, { count: 'exact' })
         .in('status', [...column.statuses])
         .order('inicio_atendimento', { ascending: false, nullsFirst: false })
@@ -361,15 +362,20 @@ function ModalNewLead({ isOpen, onClose, onSuccess }: any) {
     e.preventDefault();
     setLoading(true);
     try {
-      const { error } = await supabase.from('leads_estetica').insert({
+      const parsed = leadCreateSchema.safeParse({
         whatsapp_lead: whatsapp,
         nome_lead: nome,
         cpf: cpf || null,
         data_nascimento: dataNascimento || null,
-        procedimento_interesse: procedimento,
-        motivo_contato: motivo,
-        status: 'inicio_atendimento'
+        procedimento_interesse: procedimento || null,
+        motivo_contato: motivo || null,
+        status: 'inicio_atendimento',
       });
+      if (!parsed.success) {
+        alert(formatZodError(parsed.error));
+        return;
+      }
+      const { error } = await supabase.from('leads_estetica').insert(parsed.data);
       if (error) throw error;
       onSuccess();
       onClose();
@@ -460,14 +466,19 @@ function DrawerLead({ isOpen, onClose, lead, onRefresh, navigate }: any) {
   const handleSave = async () => {
     setLoading(true);
     try {
-      await supabase.from('leads_estetica').update({
+      const parsed = leadUpdateSchema.safeParse({
         nome_lead: formData.nome_lead,
         whatsapp_lead: formData.whatsapp_lead,
-        cpf: formData.cpf,
-        data_nascimento: formData.data_nascimento,
-        procedimento_interesse: formData.procedimento_interesse,
-        motivo_contato: formData.motivo_contato
-      }).eq('id', lead.id);
+        cpf: formData.cpf || null,
+        data_nascimento: formData.data_nascimento || null,
+        procedimento_interesse: formData.procedimento_interesse || null,
+        motivo_contato: formData.motivo_contato || null,
+      });
+      if (!parsed.success) {
+        alert(formatZodError(parsed.error));
+        return;
+      }
+      await supabase.from('leads_estetica').update(parsed.data).eq('id', lead.id);
       onRefresh();
       setEditMode(false);
     } catch (e) {

@@ -16,6 +16,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { cn, calculateAge, displayCPF, formatBirthDate } from '../lib/utils';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useModulos } from '../contexts/ModulosContext';
+import { leadUpdateSchema, leadCreateSchema, formatZodError } from '../lib/validation';
 
 interface AgendaItem {
   id: string;
@@ -348,17 +349,32 @@ function AgendaBlock({ agenda, isMobile, initialDate, closures, isAdmin, role, o
 
   const fetchEvents = async () => {
     const { data } = await supabase
-      .from('agendamentos_estetica')
-      .select('*, leads_estetica(*)')
+      .from('agendamentos_estetica_safe')
+      .select('*')
       .eq('agenda_id', agenda.id)
       .neq('status', 'cancelado');
 
-    const appointmentEvents = data ? data.map(ag => ({
+    const leadIds = [...new Set((data || []).map((ag: any) => ag.lead_id).filter(Boolean))];
+    let leadsMap: Record<string, any> = {};
+    if (leadIds.length > 0) {
+      const { data: leadsData } = await supabase
+        .from('leads_estetica_safe')
+        .select('id, nome_lead, whatsapp_lead, cpf, data_nascimento, status, procedimento_interesse')
+        .in('id', leadIds);
+      (leadsData || []).forEach((l: any) => {
+        leadsMap[l.id] = l;
+      });
+    }
+
+    const appointmentEvents = data ? data.map((ag: any) => ({
       id: ag.id,
       title: `${ag.nome_lead || 'Sem Nome'} - ${ag.procedimento_nome || ''}`,
       start: ag.data_hora_inicio,
       end: ag.data_hora_fim,
-      extendedProps: { ...ag }
+      extendedProps: {
+        ...ag,
+        leads_estetica: ag.lead_id ? leadsMap[ag.lead_id] || null : null,
+      }
     })) : [];
 
     // Adicionar eventos de fundo para os bloqueios
@@ -615,7 +631,7 @@ function ModalCreateAgendamento({ isOpen, onClose, slotInfo, agendas, onSuccess 
   }, [isOpen]);
 
   const carregarLeads = async () => {
-    const { data } = await supabase.from('leads_estetica').select('id, nome_lead, whatsapp_lead, procedimento_interesse, status').order('nome_lead', { ascending: true });
+    const { data } = await supabase.from('leads_estetica_safe').select('id, nome_lead, whatsapp_lead, procedimento_interesse, status').order('nome_lead', { ascending: true });
     if (data) setTodosLeads(data);
   };
 
@@ -871,25 +887,35 @@ function ModalViewAgendamento({ isOpen, onClose, event, onSuccess, onEventUpdate
       let novoLeadId: string | undefined;
 
       if (leadId) {
-        const { error: leadErr } = await supabase.from('leads_estetica').update({
-          nome_lead: editNome.trim() || null,
-          whatsapp_lead: editWhatsapp.trim() || null,
+        const parsed = leadUpdateSchema.safeParse({
+          nome_lead: editNome.trim() || undefined,
+          whatsapp_lead: editWhatsapp.trim() || undefined,
           cpf: editCpf.trim() || null,
           data_nascimento: editNascimento || null,
           procedimento_interesse: editInteresse.trim() || null,
-        }).eq('id', leadId);
+        });
+        if (!parsed.success) {
+          alert(formatZodError(parsed.error));
+          return;
+        }
+        const { error: leadErr } = await supabase.from('leads_estetica').update(parsed.data).eq('id', leadId);
         if (leadErr) throw leadErr;
       } else if (editWhatsapp.trim()) {
+        const parsed = leadCreateSchema.safeParse({
+          nome_lead: editNome.trim() || props.nome_lead || 'Paciente',
+          whatsapp_lead: editWhatsapp.trim(),
+          cpf: editCpf.trim() || null,
+          data_nascimento: editNascimento || null,
+          procedimento_interesse: editInteresse.trim() || props.procedimento_nome || null,
+          status: 'agendado',
+        });
+        if (!parsed.success) {
+          alert(formatZodError(parsed.error));
+          return;
+        }
         const { data: novoLead, error: createErr } = await supabase
           .from('leads_estetica')
-          .insert({
-            nome_lead: editNome.trim() || props.nome_lead || 'Paciente',
-            whatsapp_lead: editWhatsapp.trim(),
-            cpf: editCpf.trim() || null,
-            data_nascimento: editNascimento || null,
-            procedimento_interesse: editInteresse.trim() || props.procedimento_nome || null,
-            status: 'agendado',
-          })
+          .insert(parsed.data)
           .select('id')
           .single();
         if (createErr) throw createErr;
@@ -908,20 +934,31 @@ function ModalViewAgendamento({ isOpen, onClose, event, onSuccess, onEventUpdate
         .eq('id', props.id);
       if (agErr) throw agErr;
 
-      const { data: fresh } = await supabase
-        .from('agendamentos_estetica')
-        .select('*, leads_estetica(*)')
+      const { data: freshAg } = await supabase
+        .from('agendamentos_estetica_safe')
+        .select('*')
         .eq('id', props.id)
         .single();
 
-      if (fresh) {
-        onEventUpdated?.(fresh);
-        setEditNome(fresh.leads_estetica?.nome_lead || fresh.nome_lead || '');
-        setEditWhatsapp(fresh.leads_estetica?.whatsapp_lead || fresh.whatsapp_lead || '');
-        setEditCpf(fresh.leads_estetica?.cpf || fresh.cpf_lead || '');
-        setEditNascimento(fresh.leads_estetica?.data_nascimento || fresh.data_nascimento_lead || '');
-        setEditInteresse(fresh.leads_estetica?.procedimento_interesse || '');
-        if (fresh.lead_id || fresh.leads_estetica?.id) fetchNotes();
+      const resolvedLeadId = leadId || novoLeadId || freshAg?.lead_id;
+      let leadSafe: Record<string, unknown> | null = null;
+      if (resolvedLeadId) {
+        const { data } = await supabase
+          .from('leads_estetica_safe')
+          .select('id, nome_lead, whatsapp_lead, cpf, data_nascimento, procedimento_interesse, status')
+          .eq('id', resolvedLeadId)
+          .maybeSingle();
+        leadSafe = data;
+      }
+
+      if (freshAg) {
+        onEventUpdated?.({ ...freshAg, leads_estetica: leadSafe });
+        setEditNome((leadSafe?.nome_lead as string) || freshAg.nome_lead || '');
+        setEditWhatsapp((leadSafe?.whatsapp_lead as string) || freshAg.whatsapp_lead || '');
+        setEditCpf((leadSafe?.cpf as string) || freshAg.cpf_lead || '');
+        setEditNascimento((leadSafe?.data_nascimento as string) || freshAg.data_nascimento_lead || '');
+        setEditInteresse((leadSafe?.procedimento_interesse as string) || '');
+        if (resolvedLeadId) fetchNotes();
       }
 
       onSuccess();

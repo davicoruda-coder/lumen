@@ -12,9 +12,9 @@ export async function compressImage(file: File, maxWidth = 2048, quality = 0.9):
     return file;
   }
   
-  // Skip vector images (SVG) and animated images (GIF) to preserve their integrity
+  // Reject vector/animated images — must not be uploaded as-is
   if (file.type === 'image/svg+xml' || file.type === 'image/gif') {
-    return file;
+    throw new Error('SVG e GIF não são permitidos. Use JPEG, PNG ou WebP.');
   }
 
   return new Promise((resolve) => {
